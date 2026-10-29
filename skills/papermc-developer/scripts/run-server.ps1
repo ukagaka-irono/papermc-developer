@@ -137,7 +137,7 @@ if ($Fresh) {
     }
     Write-Host 'deleted the test world'
 }
-Write-PaperDevText -Path (Join-Path $serverDir 'eula.txt') -Text ("# Agreed by the user (paper-developer setup.ps1 -AcceptEula, " + $cfg.eulaAcceptedAt + "): " + $PaperDevEulaUrl + "`neula=true`n")
+Write-PaperDevText -Path (Join-Path $serverDir 'eula.txt') -Text ("# Agreed by the user (papermc-developer setup.ps1 -AcceptEula, " + $cfg.eulaAcceptedAt + "): " + $PaperDevEulaUrl + "`neula=true`n")
 $port = 0; $rconPort = 0; $password = $null
 if ($session) { $port = [int]$session.port; $rconPort = [int]$session.rconPort; $password = [string]$session.rconPassword }
 if ($port -le 0 -or -not (Test-PaperDevPortFree $port)) { $port = Find-PaperDevFreePort 25566 25575 }
@@ -147,7 +147,7 @@ if (-not $password) { $password = New-PaperDevPassword }
 $props = [ordered]@{
     'server-ip' = '127.0.0.1'; 'server-port' = $port
     'enable-rcon' = 'true'; 'rcon.port' = $rconPort; 'rcon.password' = $password; 'broadcast-rcon-to-ops' = 'false'
-    'motd' = ('paper-developer test server: ' + $pluginName)
+    'motd' = ('papermc-developer test server: ' + $pluginName)
     'generate-structures' = 'false'; 'spawn-protection' = '0'
     'view-distance' = '6'; 'simulation-distance' = '6'; 'max-players' = '5'
 }

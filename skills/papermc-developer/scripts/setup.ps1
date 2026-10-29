@@ -11,7 +11,7 @@
   -Minecraft    downloads the Paper server jar of that version (default: the project's version, else the latest stable).
   -Gradle       downloads the current Gradle distribution (used to create the wrapper of new projects).
   Without switches it downloads the server jar for the project and shows the doctor result.
-  Everything goes to the home folder (%LOCALAPPDATA%\paper-developer, or PAPERDEV_HOME), never into the project.
+  Everything goes to the home folder (%LOCALAPPDATA%\papermc-developer, or PAPERMCDEV_HOME), never into the project.
   Exit codes: 0 / 1 failed or a required item is missing.
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1

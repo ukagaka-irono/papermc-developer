@@ -4,7 +4,7 @@
 
 - 以下の `<ps>` は `powershell -NoProfile -ExecutionPolicy Bypass -File` の略（macOS / Linux では `pwsh -NoProfile -File`）。Windows PowerShell 5.1 でも PowerShell 7 でも動く。
 - `scripts/` は、このスキルのフォルダ（`SKILL.md` のあるフォルダ）の中。実行するときは `${CLAUDE_SKILL_DIR}/scripts/doctor.ps1` のようにフルパスにする（`${CLAUDE_SKILL_DIR}` が展開されないエージェントでは、`SKILL.md` のあるフォルダのパスに読み替える）。
-- **作業フォルダはプロジェクトのルート**にする。別の場所からは `-ProjectRoot <フォルダ>`（環境変数 `PAPERDEV_PROJECT_ROOT` でも指定できる）。プロジェクトは、作業フォルダとその親をさかのぼって、Gradle（`settings.gradle(.kts)` / `build.gradle(.kts)`）か Maven（`pom.xml`）のファイルがあるいちばん外側のフォルダに決める。`plugin.yml` / `paper-plugin.yml` は、そこの `src/main/resources/`、なければ 1 段下のサブプロジェクトから探す。
+- **作業フォルダはプロジェクトのルート**にする。別の場所からは `-ProjectRoot <フォルダ>`（環境変数 `PAPERMCDEV_PROJECT_ROOT` でも指定できる）。プロジェクトは、作業フォルダとその親をさかのぼって、Gradle（`settings.gradle(.kts)` / `build.gradle(.kts)`）か Maven（`pom.xml`）のファイルがあるいちばん外側のフォルダに決める。`plugin.yml` / `paper-plugin.yml` は、そこの `src/main/resources/`、なければ 1 段下のサブプロジェクトから探す。
 - 終了コード: **0** OK / **1** 失敗・エラー / **2** 注意が要る（ログにエラー、手作業が残る、など）/ **3** 道具（Java、ビルドの道具、EULA への同意、サーバー）が無くて確かめられない。
 
 | コマンド | 内容 | 終了コード |
@@ -20,19 +20,19 @@
 | `<ps> scripts/server-log.ps1` | テストサーバーの `logs/latest.log` を読む（読み取りのみ）。既定は ERROR と、プラグインに関する WARN（プラグインのロガー、名前を含む、スタックトレースがプラグインのパッケージを通る）。`-Level WARN|INFO`、`-Plugin`（プラグインに関するものだけ、全レベル）、`-Pattern <正規表現>`、`-Tail <件数>`、`-Wait <秒>`（新しく来るのを待つ。タイマーの処理など） | 0 / 1 ログが無い、`-Wait` で来なかった / 2 表示したものに ERROR / 3 テストサーバーがまだ無い |
 | `<ps> scripts/build-release.ps1` | 配布用の jar を作る。`check.ps1` を通し（`-SkipCheck` で省く）、jar を調べ（記述ファイルの version が埋まっている、main クラスがある、サーバーの API（`org/bukkit`、`io/papermc/paper`、`net/kyori/adventure` など）を同梱していない、ほかに同梱したライブラリの一覧）、`build/release/<名前>-<版>.jar` と `.sha256` を書く。`-Tag v1.2.0` でタグと版の一致も見る。`-ListOnly` は jar の中身の一覧だけ。**公開はしない** | 0 / 1 / 3 |
 | `<ps> scripts/update-paper.ps1` | 別の版（既定は最新の安定版）に移す。ビルドファイルの paper-api（folia-api）、Java のツールチェーン（上げるだけ）、run-paper の `minecraftVersion`、MockBukkit、ワークフローの `java-version` を書き換え、`check.ps1` を通す。`-ApiVersion` で記述ファイルの `api-version` も上げる。書き換える前のファイルはホームフォルダの `backups/` に置く。読めない書き方（version catalog など）は `manual` として知らせる。`-DryRun`、`-NoCheck` | 0 / 1 失敗、または更新後のチェックが通らない / 2 手で直すところが残る |
-| `<ps> scripts/update-skill.ps1` | コピーで入れたスキルを GitHub の最新に更新する（Claude Code のプラグインは `claude plugin update paper-developer`）。`-DryRun`、`-Ref`、`-Source <フォルダか zip>`、`-Target` | 0 / 1 |
+| `<ps> scripts/update-skill.ps1` | コピーで入れたスキルを GitHub の最新に更新する（Claude Code のプラグインは `claude plugin update papermc-developer`）。`-DryRun`、`-Ref`、`-Source <フォルダか zip>`、`-Target` | 0 / 1 |
 
 ## ホームフォルダ
 
 スクリプトが作るもの・取るものは、スキルのフォルダでもプロジェクトでもなく、**ホームフォルダ**に置く。場所は `doctor.ps1` が表示する。
 
-- 既定は `%LOCALAPPDATA%\paper-developer`（Windows）、`$XDG_DATA_HOME/paper-developer` か `~/.local/share/paper-developer`（その他）。環境変数 `PAPERDEV_HOME` で変えられる。
+- 既定は `%LOCALAPPDATA%\papermc-developer`（Windows）、`$XDG_DATA_HOME/papermc-developer` か `~/.local/share/papermc-developer`（その他）。環境変数 `PAPERMCDEV_HOME` で変えられる。
 - `local.json`: 各自の設定。`eulaAccepted`（`setup.ps1 -AcceptEula` が書く）、`javaPath`（`setup.ps1 -JavaPath`）。
 - `cache/gradle/`: `new-plugin.ps1` が Wrapper を作るのに使う Gradle。`cache/paper/`、`cache/folia/`: サーバーの jar。消してよい（必要になればまた取る）。
-- `jdk/`: `setup.ps1 -Jdk` が入れた JDK（`temurin-8` など）。`servers/<プロジェクト>-<ハッシュ>/`: テストサーバー。`paper-developer-session.json` にポートと RCON のパスワード。消すとワールドとプラグインのデータも消える。
+- `jdk/`: `setup.ps1 -Jdk` が入れた JDK（`temurin-8` など）。`servers/<プロジェクト>-<ハッシュ>/`: テストサーバー。`papermc-developer-session.json` にポートと RCON のパスワード。消すとワールドとプラグインのデータも消える。
 - `backups/`: `update-paper.ps1` が書き換える前のファイル。
 
-Gradle を動かす java は `-JavaPath` → 環境変数 `PAPERDEV_JAVA` → `local.json` の `javaPath` → `JAVA_HOME` → `PATH` の順に探す。テストサーバーの java は、`local.json` の `jdks`、ホームフォルダの `jdk/`、Gradle のツールチェーン（`~/.gradle/jdks`）、IntelliJ（`~/.jdks`）、各社の JDK のインストール先、`JAVA_HOME`、`PATH` から、その版が動くものを選ぶ（同じ版が好まれる）。
+Gradle を動かす java は `-JavaPath` → 環境変数 `PAPERMCDEV_JAVA` → `local.json` の `javaPath` → `JAVA_HOME` → `PATH` の順に探す。テストサーバーの java は、`local.json` の `jdks`、ホームフォルダの `jdk/`、Gradle のツールチェーン（`~/.gradle/jdks`）、IntelliJ（`~/.jdks`）、各社の JDK のインストール先、`JAVA_HOME`、`PATH` から、その版が動くものを選ぶ（同じ版が好まれる）。
 
 ## `./gradlew runServer` との違い
 

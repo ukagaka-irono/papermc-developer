@@ -21,7 +21,7 @@
 5. `scripts/setup.ps1` で、対象の版の Paper のサーバーの jar をホームフォルダに取る（ネットワークに出ることを一言伝える）。最後に doctor の結果が出るので、`required` がすべて ok になったか確かめる。
 6. 入門用のファイルが足りなければ（`PLUGIN.md`、`AGENTS.md`、`CLAUDE.md`、`.gitignore` など）、`scripts/init-plugin.ps1 -DryRun` で作るものを確かめて作者に伝え、`-DryRun` を外して実行する（あるファイルは変えない）。GitHub を使うなら `-Workflow`（`references/workflows/ci.md`）。
 7. `scripts/check.ps1` で、ビルドとテストが通ることを確かめる。
-8. doctor の `plugin-profile` が ok でなければ（`PLUGIN.md` が無い、または先頭に `<!-- paper-developer:plugin-template -->` が残っている）、`PLUGIN.md` を下書きする。
+8. doctor の `plugin-profile` が ok でなければ（`PLUGIN.md` が無い、または先頭に `<!-- papermc-developer:plugin-template -->` が残っている）、`PLUGIN.md` を下書きする。
    - `plugin.yml` / `paper-plugin.yml`（名前、main、権限、コマンド、依存）、`build.gradle.kts`（版、依存）、`config.yml`、コード（コマンドの登録、リスナー、スケジューラ、保存しているデータ）、`README` があれば読んで埋める。
    - 何をするプラグインか、決まりなど、コードから読み取れないことは推測で足さない。わからない欄は空けたまま、作者に聞く。
    - 下書きを見せて確かめてもらい、了承を得てから書き込む。書き終えたら先頭のマーカーの 2 行を消す。

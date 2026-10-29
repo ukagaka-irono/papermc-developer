@@ -1,5 +1,5 @@
 ---
-name: paper-developer
+name: papermc-developer
 description: Minecraft の Paper サーバー用プラグイン（Bukkit/Spigot 互換の plugin.yml と、paper-plugin.yml。Folia 対応も。Paper 1.7.10 から最新の 26.x まで）を作る・直す・動かして確かめる・配布する。新しいプラグインのひな形を作る、コマンド・イベント・設定・権限・スケジューラなどのコードを書く、ビルドやテストのエラーを直す、テスト用の Paper サーバーを立てて RCON でコマンドを送りログを見る、配布用の jar を作って GitHub Releases / Hangar / Modrinth に出す、Paper の版（paper-api、Java）を上げる、といったとき。settings.gradle.kts / build.gradle.kts（または pom.xml）と src/main/resources/plugin.yml のあるフォルダが対象。Minecraft plugin, Paper, Spigot, Bukkit, Folia, Brigadier, Adventure, MiniMessage, MockBukkit, run-paper の話題を含む。
 allowed-tools:
   - 'Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_SKILL_DIR}/scripts/doctor.ps1*)'
@@ -18,7 +18,7 @@ allowed-tools:
   - 'WebFetch(domain:docs.mockbukkit.org)'
 ---
 
-# paper-developer
+# papermc-developer
 
 Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布するためのスキル。対象は **Paper 1.7.10 から最新（26.x）まで**。版によって使える API、Java、記述ファイルの書き方が違う（`references/versions.md`）。作者（ユーザー）は「何を作りたいか」に集中し、決まった作業（環境の準備、ビルドとテスト、テストサーバーでの確認、配布用 jar の作成、版の更新）はこちらで引き受ける。
 
@@ -37,12 +37,12 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 ```
 
 - スクリプトは `powershell -NoProfile -ExecutionPolicy Bypass -File <スキルのフォルダ>/scripts/<名前>.ps1 ...` で呼ぶ（macOS / Linux では `pwsh -NoProfile -File ...`）。Claude Code では `${CLAUDE_SKILL_DIR}/scripts/doctor.ps1` のように書ける（展開されないエージェントでは、スキルのフォルダのフルパスに読み替える）。**作業フォルダはプラグインのプロジェクトのルート**（`settings.gradle.kts` や `pom.xml` のあるフォルダ）。別の場所からは `-ProjectRoot <フォルダ>`。
-- スキルのフォルダには**書き込まない**（プラグインの更新で置き換わる）。ダウンロードした Gradle とサーバーの jar、テストサーバー、設定（`local.json`）は、ホームフォルダ（`%LOCALAPPDATA%\paper-developer`、環境変数 `PAPERDEV_HOME` で変更可）に置かれる。プロジェクトのフォルダには、ビルドの成果物（`build/`）以外は増やさない。
+- スキルのフォルダには**書き込まない**（プラグインの更新で置き換わる）。ダウンロードした Gradle とサーバーの jar、テストサーバー、設定（`local.json`）は、ホームフォルダ（`%LOCALAPPDATA%\papermc-developer`、環境変数 `PAPERMCDEV_HOME` で変更可）に置かれる。プロジェクトのフォルダには、ビルドの成果物（`build/`）以外は増やさない。
 - 終了コードは、どのスクリプトも 0 OK / 1 失敗 / 2 注意が要る / 3 道具が無くて確かめられない。一覧は `references/commands.md`。
 
 ## 作業を始める前に
 
-1. **プロジェクトのルートの `PLUGIN.md` を読む。** 何をするプラグインか、対象のサーバーと Java、コマンドと権限、設定、決まり、動作確認の手順など、このプラグインに固有の情報はそこにある。無い、または先頭に `<!-- paper-developer:plugin-template -->` が残っている（まだ書かれていない）ときは、`references/workflows/setup.md` に沿って、コードを読んで下書きすることを作者に提案する。
+1. **プロジェクトのルートの `PLUGIN.md` を読む。** 何をするプラグインか、対象のサーバーと Java、コマンドと権限、設定、決まり、動作確認の手順など、このプラグインに固有の情報はそこにある。無い、または先頭に `<!-- papermc-developer:plugin-template -->` が残っている（まだ書かれていない）ときは、`references/workflows/setup.md` に沿って、コードを読んで下書きすることを作者に提案する。
 2. **`scripts/doctor.ps1` を実行する**（何も変更しない）。プロジェクト、`plugin.yml` か `paper-plugin.yml` か、対象の Minecraft の版と必要な Java、ビルドの道具、足りないものと直し方が出る。`required` が足りなければ、ほかの作業の前に `references/workflows/setup.md` を提案する。
 3. プロジェクトがまだ無いとき（空のフォルダで「プラグインを作りたい」と言われたとき）は、`references/workflows/new-plugin.md`。
 4. **版は推測しない。** Minecraft と Paper の版、必要な Java、API の依存の書き方、Gradle プラグインの版は、時期で変わる（26.1 から版の付け方も変わった）。知識で書かず、`scripts/versions.ps1`（別の版は `-Minecraft <版>`）で今の値を見る。
@@ -66,7 +66,7 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 | 「Paper を最新にして」「1.21 から 26 に上げて」「対応バージョンを上げて」「今の最新は？」 | `references/workflows/update-paper.md` |
 | 「1.8.8 用のプラグインを作って」「1.12.2 のサーバーで動くようにして」「古い版にも対応したい」 | `references/versions.md`（作るなら `references/workflows/new-plugin.md`） |
 | 「Folia に対応して」 | `references/paper-api.md` の「Folia」 |
-| 「スキルを更新して」「paper-developer を最新にして」 | `references/workflows/update-skill.md` |
+| 「スキルを更新して」「papermc-developer を最新にして」 | `references/workflows/update-skill.md` |
 
 ## 作業のルール
 
@@ -80,7 +80,7 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 7. **編集しないもの**: `gradle/wrapper/` の中身（版を変えるのは `gradlew wrapper --gradle-version`）、`build/`、`run/`（`./gradlew runServer` の作業フォルダ）、他人のプラグインの jar。サーバーの内部（NMS、`net.minecraft`、paperweight-userdev）を使うのは、API で実現できないと確かめ、作者が版ごとの保守を引き受けると言ったときだけ。
 8. 既存のコードや作者が書いたメッセージを、頼まれていないのに大量に書き換えたり消したりしない。使われていないクラスや設定に気づいても、報告するだけにする。
 9. **作者の確認を取ってから行うこと**: アプリ（JDK、Git など）のインストール、EULA への同意の記録、Paper の版の更新、スキルの更新、リリース（タグの push、GitHub Releases、Hangar、Modrinth への公開）、ほかのサーバーへの jar の配置など、手元のファイル編集を超える操作。公開用のトークン（Hangar / Modrinth の API キー、GitHub のトークン）を、作者にチャットへ貼らせない。環境変数か、GitHub の Secrets に入れてもらう。
-10. `scripts/` の外から paper-developer のスクリプトを書き換えない。足したい機能は、プロジェクトの側に置くか、https://github.com/ukagaka-irono/paper-developer に提案する。
+10. `scripts/` の外から papermc-developer のスクリプトを書き換えない。足したい機能は、プロジェクトの側に置くか、https://github.com/ukagaka-irono/papermc-developer に提案する。
 
 ## 仕様を調べる
 
@@ -95,7 +95,7 @@ Paper API、イベント、`plugin.yml` / `paper-plugin.yml` の項目、コマ�
 4. MockBukkit: https://docs.mockbukkit.org/ 。版の値は `scripts/versions.ps1`。
 5. それでも分からなければ Web 検索する。Spigot のフォーラムや古いブログの書き方は、Paper では非推奨や別の API になっていることが多いので、1. と 2. で確かめ直す。
 
-調べものは、小さく速いモデルのサブエージェントに任せるとよい（Claude Code のプラグインには `paper-researcher` が入っている）。
+調べものは、小さく速いモデルのサブエージェントに任せるとよい（Claude Code のプラグインには `papermc-researcher` が入っている）。
 
 ## 資料
 

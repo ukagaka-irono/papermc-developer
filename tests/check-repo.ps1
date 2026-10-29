@@ -8,7 +8,7 @@
 #>
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$skill = Join-Path $repo 'skills/paper-developer'
+$skill = Join-Path $repo 'skills/papermc-developer'
 $problems = New-Object System.Collections.ArrayList
 function Problem { param([string]$Text) [void]$problems.Add($Text); Write-Host ('[PROBLEM] ' + $Text) }
 function Rel { param([string]$Path) return ($Path.Substring($repo.Length).TrimStart('\', '/') -replace '\\', '/') }
@@ -44,7 +44,7 @@ foreach ($d in $docs) {
 $skillText = ReadText (Join-Path $skill 'SKILL.md')
 $skillLines = @($skillText -split "`n").Count
 if ($skillLines -gt 500) { Problem ('SKILL.md has ' + $skillLines + ' lines (keep it under 500)') }
-if ($skillText -notmatch '(?m)^name: paper-developer\s*$') { Problem 'SKILL.md: name is not paper-developer' }
+if ($skillText -notmatch '(?m)^name: papermc-developer\s*$') { Problem 'SKILL.md: name is not papermc-developer' }
 foreach ($m in [regex]::Matches($skillText, '\$\{CLAUDE_SKILL_DIR\}/(scripts/[A-Za-z0-9_-]+\.ps1)')) {
     if (-not (Test-Path -LiteralPath (Join-Path $skill $m.Groups[1].Value))) { Problem ('SKILL.md allowed-tools: missing ' + $m.Groups[1].Value) }
 }
@@ -70,7 +70,7 @@ foreach ($t in (Get-ChildItem -LiteralPath (Join-Path $skill 'templates') -Recur
         if ($known -notcontains $n) { Problem ((Rel $t.FullName) + ': unknown token @@' + $n + '@@') }
     }
 }
-if (-not (Test-Path -LiteralPath (Join-Path $skill 'templates/PLUGIN.md')) -or (ReadText (Join-Path $skill 'templates/PLUGIN.md')) -notmatch 'paper-developer:plugin-template') { Problem 'templates/PLUGIN.md lacks the template marker' }
+if (-not (Test-Path -LiteralPath (Join-Path $skill 'templates/PLUGIN.md')) -or (ReadText (Join-Path $skill 'templates/PLUGIN.md')) -notmatch 'papermc-developer:plugin-template') { Problem 'templates/PLUGIN.md lacks the template marker' }
 
 # 4. manifests
 foreach ($j in @('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')) {
@@ -86,7 +86,7 @@ else {
     $expected = $Matches[1]
     $files = @(Get-ChildItem -LiteralPath $repo -Recurse -File -Include '*.md', '*.json', '*.ps1', '*.yml' | Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' })
     foreach ($f in $files) {
-        foreach ($m in [regex]::Matches((ReadText $f.FullName), '(?:github\.com/|marketplace add |codeload\.github\.com/)([A-Za-z0-9_.-]+/paper-developer)')) {
+        foreach ($m in [regex]::Matches((ReadText $f.FullName), '(?:github\.com/|marketplace add |codeload\.github\.com/)([A-Za-z0-9_.-]+/papermc-developer)')) {
             if ($m.Groups[1].Value -ne $expected) { Problem ((Rel $f.FullName) + ': names ' + $m.Groups[1].Value + ', expected ' + $expected) }
         }
     }
