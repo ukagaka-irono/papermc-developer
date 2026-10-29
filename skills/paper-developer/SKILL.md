@@ -62,6 +62,7 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 | 「サーバーで試して」「動かして見せて」「このコマンドを打ってみて」「ログを見て」「サーバーでエラーが出る」 | `references/workflows/try-on-server.md` |
 | 「配布用の jar を作って」「リリースしたい」「Hangar（Modrinth）に出したい」 | `references/workflows/release.md` |
 | 「GitHub でビルドしたい」「Actions を入れて」「タグでリリースしたい」 | `references/workflows/ci.md` |
+| 「ブランチを分けたい」「develop を作って」「作業用のブランチを作って」「develop にマージして」 | `references/workflows/branches.md` |
 | 「Paper を最新にして」「1.21 から 26 に上げて」「対応バージョンを上げて」「今の最新は？」 | `references/workflows/update-paper.md` |
 | 「1.8.8 用のプラグインを作って」「1.12.2 のサーバーで動くようにして」「古い版にも対応したい」 | `references/versions.md`（作るなら `references/workflows/new-plugin.md`） |
 | 「Folia に対応して」 | `references/paper-api.md` の「Folia」 |
@@ -69,6 +70,7 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 
 ## 作業のルール
 
+0. **ブランチは `main` / `develop` / `〇〇〇〇-fix` に分ける**（`references/workflows/branches.md`）。Git で管理しているプロジェクトでコードを変えるときは、先に今のブランチを確かめ、`main` か `develop` にいるなら `develop` から `〇〇〇〇-fix`（例: `hello-command-fix`）を作ってから変える。`main` と `develop` には直接コミットしない。作業ブランチは `develop` に戻し、リリースのときだけ `develop` を `main` に入れる。コミット、push、Pull Request、マージ、タグは作者に頼まれたときだけ。
 1. **コードやビルドの設定、`plugin.yml` / `paper-plugin.yml` を変えたら、必ず `scripts/check.ps1` を通す。** 記述ファイルの検査（main クラスの実在、api-version、`getCommand` と宣言の食い違い）、コンパイル、テストを行う。error が残ったまま「できました」と言わない。非推奨（deprecation）の警告は、新しく書いたコードのものは直す。
 2. **動きを確かめるときは、テスト（MockBukkit）とテストサーバーを使い分ける**（`references/testing.md`）。サーバーで確かめるときは `scripts/run-server.ps1` が立てる**テスト用のサーバー**だけを使う（ホームフォルダの中、127.0.0.1 だけで待ち受ける）。作者がふだん使っているサーバーや、公開しているサーバーには、作者に頼まれても、作者が自分で入れる手順を示すにとどめる。
 3. **Minecraft のサーバーを動かすには、作者が Minecraft の EULA（https://aka.ms/MinecraftEULA ）に同意している必要がある。** 同意はこちらで代わりにしない。テストサーバーを初めて使うときは、EULA の場所を示して作者に読んでもらい、作者が同意すると言ったときだけ `scripts/setup.ps1 -AcceptEula` を実行する。

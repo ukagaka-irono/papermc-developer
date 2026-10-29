@@ -3,7 +3,7 @@
   Diagnoses the environment for developing a Paper plugin. Changes nothing.
 .DESCRIPTION
   Shows the plugin project (root, build tool, plugin.yml or paper-plugin.yml), Java and the version the
-  target Minecraft version needs, the build wrapper, Git, PLUGIN.md, and whether the test server can run
+  target Minecraft version needs, the build wrapper, Git and the current branch (main / develop / <topic>-fix), PLUGIN.md, and whether the test server can run
   (EULA agreement). Each missing item comes with its purpose and how to fix it.
   Exit codes: 0 required items are present / 1 a required item is missing.
 .EXAMPLE
@@ -96,6 +96,24 @@ if ($project) {
 $git = Get-Command git -ErrorAction SilentlyContinue | Select-Object -First 1
 Add-Item 'git' 'recommended' ([bool]$git) ([string]$(if ($git) { $git.Source } else { '' })) 'History of changes, GitHub Actions, releases.' 'winget install --id Git.Git -e'
 
+# Branches: main (released) / develop (next release) / <topic>-fix (one change each). references/workflows/branches.md
+$branch = $null
+if ($git -and $project) {
+    $inside = Invoke-PaperDevProcess -FilePath $git.Source -Arguments @('-C', $project.Root, 'rev-parse', '--is-inside-work-tree')
+    if ($inside.ExitCode -eq 0 -and $inside.StdOut.Trim() -eq 'true') {
+        $branch = (Invoke-PaperDevProcess -FilePath $git.Source -Arguments @('-C', $project.Root, 'branch', '--show-current')).StdOut.Trim()
+        $hasDevelop = (Invoke-PaperDevProcess -FilePath $git.Source -Arguments @('-C', $project.Root, 'rev-parse', '--verify', '--quiet', 'refs/heads/develop')).ExitCode -eq 0
+        $ok = $true
+        $d = 'on ' + $branch
+        $fix = ''
+        if (-not $branch) { $ok = $false; $d = 'detached HEAD (no branch)'; $fix = 'git switch develop, then git switch -c <topic>-fix' }
+        elseif (-not $hasDevelop) { $ok = $false; $d += '; no develop branch'; $fix = 'Ask the user, then create develop from main: git branch develop main (references/workflows/branches.md)' }
+        elseif ($branch -eq 'main' -or $branch -eq 'master' -or $branch -eq 'develop') { $ok = $false; $d += ' (do not commit here)'; $fix = 'Before changing code: git switch develop, then git switch -c <topic>-fix (e.g. hello-command-fix)' }
+        elseif ($branch -notmatch '-fix$') { $ok = $false; $d += ' (work branches are named <topic>-fix)'; $fix = 'Ask the user whether to keep working here or move to a <topic>-fix branch from develop' }
+        Add-Item 'branch' 'recommended' $ok $d 'Work happens on <topic>-fix branches made from develop; develop goes into main for releases.' $fix
+    }
+}
+
 if ($project) {
     $pm = Join-Path $project.Root 'PLUGIN.md'
     $pmOk = Test-Path -LiteralPath $pm
@@ -117,7 +135,7 @@ $missingRequired = @($items | Where-Object { $_.level -eq 'required' -and -not $
 
 if ($Json) {
     $out = [PSCustomObject]@{
-        project = $(if ($project) { $project.Root } else { $null }); kind = $(if ($project) { $project.Kind } else { $null })
+        project = $(if ($project) { $project.Root } else { $null }); kind = $(if ($project) { $project.Kind } else { $null }); branch = $branch
         minecraft = $target; latestMinecraft = $latest; javaRequired = $javaNeeded; home = $home2; items = $items.ToArray()
     }
     Write-Output ($out | ConvertTo-Json -Depth 5)

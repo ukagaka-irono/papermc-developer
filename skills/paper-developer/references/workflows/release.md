@@ -8,6 +8,7 @@
 
 ## jar を作る
 
+0. **リリースは `develop` から作る**（`references/workflows/branches.md`）。出したい作業ブランチ（`〇〇〇〇-fix`）がすべて `develop` に入っていることを確かめ、`develop` にいる状態で始める。版の変更も、小さな `release-1-2-0-fix` のような作業ブランチで行って `develop` に戻してよい。
 1. 版を決める。`build.gradle.kts` の `version`（`plugin.yml` にはビルドで埋め込まれる）。前の版からの変更を見て、作者に版を確かめる（目安: 互換を壊すなら 1 つめ、機能を足したら 2 つめ、直しただけなら 3 つめの数字を上げる）。`-SNAPSHOT` は外す。
 2. `api-version` が、動かしたい最も古いサーバーの版になっているか確かめる。
 3. `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1`（タグを打つなら `-Tag v1.2.0`）。
@@ -23,7 +24,7 @@
 
 ### GitHub Releases
 
-- GitHub Actions を使う（推奨）: `scripts/init-plugin.ps1 -Workflow` で入る `.github/workflows/release.yml` は、`v*` のタグの push で、ビルドして jar をリリースに付ける。作者の了承を得てから `git tag v1.2.0` と `git push origin v1.2.0`（`references/workflows/ci.md`）。
+- GitHub Actions を使う（推奨）: `scripts/init-plugin.ps1 -Workflow` で入る `.github/workflows/release.yml` は、`v*` のタグの push で、ビルドして jar をリリースに付ける。作者の了承を得てから、`develop` → `main` の Pull Request を作ってマージし（`gh pr create --base main --head develop`）、**`main` の上で** `git tag v1.2.0` と `git push origin v1.2.0`（`references/workflows/ci.md`）。タグは `main` 以外に付けない（`release.yml` は `main` に無いタグでは失敗する）。
 - 手元から: `gh release create v1.2.0 build/release/<jar> --title v1.2.0 --notes-file <更新履歴>`（gh が要る。作者の了承を得てから）。
 
 ### Hangar（PaperMC の公式の配布先）

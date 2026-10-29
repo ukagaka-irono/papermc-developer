@@ -19,7 +19,7 @@
 6. `PLUGIN.md` の「概要」「コマンドと権限」「動作確認」を、作者の説明で埋める（ひな形の `/hello` と参加メッセージの行は、本題を作るときに消してよいと伝える）。
 7. 作者の作りたいものを実装する。`references/paper-api.md` を読み、該当する PaperMC のドキュメントのページを読んでから書く。書いたら `scripts/check.ps1`、テストを足す（`references/testing.md`）。
 8. テストサーバーで確かめる（`references/workflows/try-on-server.md`。初回は EULA への同意を作者に確かめる）。
-9. Git を使うなら、`git init` とはじめのコミットを提案する（作者の了承を得てから）。
+9. Git を使うなら、作者の了承を得てから、`main` / `develop` / `〇〇〇〇-fix` の形で始める（`references/workflows/branches.md`）: `git init -b main` → ひな形をはじめのコミットにする → `git branch develop`。この後の作業（作者の作りたい機能）は、`develop` から作った `〇〇〇〇-fix`（例: `sleep-vote-fix`）で行う。GitHub に上げるなら、リポジトリの作成と push も作者に確かめてから（`gh repo create`）。
 
 ## 補足
 

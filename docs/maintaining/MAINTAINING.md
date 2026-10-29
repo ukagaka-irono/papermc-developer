@@ -57,8 +57,23 @@ tests/e2e.ps1                                   ひな形を作ってビルド�
 ## 更新（プラグイン）
 
 - `plugin.json` と `marketplace.json` に **`version` を書かない**。書かなければ、コミットのたびに新しい版になり、`claude plugin update` と自動更新で届く。
-- したがって、**既定ブランチの先頭は、いつでも利用者に届く**。壊れたまま push しない。
+- したがって、**既定ブランチ（`main`）の先頭は、いつでも利用者に届く**。壊れたまま push しない。だから、下の「ブランチ」のとおり、`main` には `develop` からしか入れない。
 - `claude plugin validate .` で、マニフェストと同梱物を確かめる。
+
+## ブランチ
+
+このリポジトリも、スキルがプラグインのプロジェクトに求めるのと同じ `main` / `develop` / `〇〇〇〇-fix` で運用する（プロジェクト向けの手順は `skills/paper-developer/references/workflows/branches.md`）。
+
+| ブランチ | 役割 |
+|---|---|
+| `main` | 利用者に届く版。**GitHub の既定ブランチは `main` のままにする**（プラグインのマーケットプレイスとコピー導入の `update-skill.ps1` は既定ブランチを取る）。直接コミットしない |
+| `develop` | 次に `main` へ入れる変更を集める。直接コミットしない |
+| `〇〇〇〇-fix` | 1 つの変更ごと（例: `branch-rules-fix`、`folia-server-fix`）。`develop` から作り、`develop` への Pull Request で戻す |
+
+- 作業ブランチの Pull Request は `develop` 向け。CI（`.github/workflows/check.yml`。`check-repo` と `e2e`）が通ってからマージする。
+- `develop` を `main` に入れる（リリース）前に、下の「確認」を `develop` で行う。テストサーバーに関わる変更は、EULA に同意した手元の環境で `run-server.ps1` まで通す（CI では動かせない）。`develop` → `main` も Pull Request で行い、マージした時点で利用者に届く。
+- リリース前の `develop` を試すには、コピー導入なら `scripts/update-skill.ps1 -Ref develop`。
+- `main` の不具合を急いで直すときも、`develop` から `〇〇〇〇-fix` を作り、`develop` を経て `main` に入れる（`main` だけを直さない。直したものが `develop` から消えるのを防ぐ）。
 - リポジトリの場所（`ukagaka-irono/paper-developer`）は、`scripts/lib/common.ps1` の `$PaperDevRepo`、`README.md`、`templates/AGENTS.md`、`SKILL.md`、`references/workflows/update-skill.md`、`.claude-plugin/` にある。移したら全部直す（`tests/check-repo.ps1` が食い違いを見つける）。
 
 ## 確認
