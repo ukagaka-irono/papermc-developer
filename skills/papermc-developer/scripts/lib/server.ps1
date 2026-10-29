@@ -44,6 +44,22 @@ function Stop-PaperDevServer {
     return $true
 }
 
+function Get-PaperDevPlatformDir {
+    # The test server folder of a server type: Paper in <home>/servers/<project>/ itself, the others in a subfolder
+    # (folia/, spigot/, craftbukkit/), so that each has its own world.
+    param($Project, [string]$Platform)
+    $base = Get-PaperDevServerDir $Project
+    if (-not $Platform -or $Platform -eq 'paper') { return $base }
+    return (Join-Path $base $Platform)
+}
+
+function Get-PaperDevSessionLogDir {
+    # Where the running (or last) test server of a Paper-type session writes logs/: the session's serverDir.
+    param($Project, $Session)
+    if ($Session -and $Session.PSObject.Properties['serverDir'] -and $Session.serverDir) { return [string]$Session.serverDir }
+    return (Get-PaperDevServerDir $Project)
+}
+
 function Send-PaperDevConsoleCommand {
     # Velocity: appends a line to the queue that lib/console-bridge.ps1 feeds into the proxy's console.
     param($Session, [string]$Command)

@@ -54,6 +54,8 @@ try {
     $velocity = $null; $velocityJava = $null; $foliaVersions = @()
     try { $velocity = Get-PaperDevLatestVelocity; $velocityJava = [int](Get-PaperDevVersionInfo -Minecraft $velocity -Project 'velocity').JavaMinimum } catch { }
     try { $foliaVersions = @(Get-PaperDevMinecraftVersions 'folia') } catch { }
+    $spigotLatest = $null; $spigotJava = $null
+    try { $spigotLatest = @(Get-PaperDevSpigotVersions)[0]; $spigotJava = Get-PaperDevSpigotJava $spigotLatest } catch { }
     $folia = $null
     try { if ((Get-PaperDevMinecraftVersions 'folia') -contains $mc) { $folia = $mc } } catch { }
 
@@ -75,6 +77,7 @@ try {
         foliaAvailable = [bool]$folia
         foliaVersions = $foliaVersions
         velocity = $velocity
+        spigotLatest = $spigotLatest
         velocityJava = $velocityJava
         velocityApiDependency = $(if ($velocity) { 'com.velocitypowered:velocity-api:' + $velocity } else { $null })
         mockbukkit = $(if ($mock) { 'org.mockbukkit.mockbukkit:' + $mock.Artifact + ':' + $mock.Version } else { $null })
@@ -99,6 +102,7 @@ try {
     Write-Host ('  MockBukkit:        ' + $(if ($mock) { 'org.mockbukkit.mockbukkit:' + $mock.Artifact + ':' + $mock.Version } else { 'none for this version yet' }))
     Write-Host ('Folia versions:      ' + ($foliaVersions -join ' '))
     Write-Host ('Velocity (proxy):    ' + $velocity + ', Java ' + $velocityJava + '+, compileOnly + annotationProcessor("com.velocitypowered:velocity-api:' + $velocity + '")')
+    if ($spigotLatest) { Write-Host ('Spigot/CraftBukkit:  ' + $spigotLatest + ' (built with BuildTools), Java ' + $spigotJava.JavaMin + '-' + $spigotJava.JavaMax + ', compileOnly("org.spigotmc:spigot-api:' + $spigotLatest + '-R0.1-SNAPSHOT")') }
     Write-Host ('gradle:              ' + $gradle)
     foreach ($k in $plugins.Keys) { Write-Host ('  ' + $k.PadRight(50) + $plugins[$k]) }
     if ($current) {

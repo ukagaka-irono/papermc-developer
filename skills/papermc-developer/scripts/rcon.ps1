@@ -36,7 +36,7 @@ if (-not $project) { Write-PaperDevStatus 'error' 'no Gradle or Maven project fo
 $session = Get-PaperDevSession $project
 $serverDir = Get-PaperDevServerDir $project
 $target = $session
-$logPath = Join-Path $serverDir 'logs/latest.log'
+$logPath = Join-Path (Get-PaperDevSessionLogDir $project $session) 'logs/latest.log'
 $viaConsole = $false
 if ($session -and $session.platform -eq 'velocity') {
     if ($Backend) { $target = $session.backend; $logPath = Join-Path $serverDir 'backend/logs/latest.log' }

@@ -1,6 +1,11 @@
+@@BEGIN:CRAFTBUKKIT@@
+// papermc-developer: platform=craftbukkit (Bukkit API only: no player.spigot(), no net.md_5.bungee)
+@@END:CRAFTBUKKIT@@
 plugins {
     java
+@@BEGIN:PAPER@@
     id("xyz.jpenilla.run-paper") version "@@RUN_PAPER@@"
+@@END:PAPER@@
 }
 
 group = "@@GROUP@@"
@@ -9,7 +14,12 @@ description = "@@DESCRIPTION@@"
 
 repositories {
     mavenCentral()
+@@BEGIN:PAPER@@
     maven("https://repo.papermc.io/repository/maven-public/")
+@@END:PAPER@@
+@@BEGIN:SPIGOT_REPO@@
+    maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
+@@END:SPIGOT_REPO@@
 }
 
 dependencies {
@@ -47,8 +57,10 @@ tasks.test {
     useJUnitPlatform()
 }
 @@END:TESTS@@
+@@BEGIN:PAPER@@
 
 tasks.runServer {
     // ./gradlew runServer starts a server with this plugin in run/ (interactive console).
     minecraftVersion("@@MINECRAFT@@")
 }
+@@END:PAPER@@

@@ -122,6 +122,22 @@ if ($project.Kind -eq 'velocity') {
             }
         }
     }
+    # CraftBukkit: after 1.15.2 the build compiles against spigot-api, so Spigot's extras compile but are missing on
+    # a CraftBukkit server (NoSuchMethodError / NoClassDefFoundError at run time).
+    if ($versions.Platform -eq 'craftbukkit') {
+        foreach ($r in $sourceRoots) {
+            if (-not (Test-Path -LiteralPath $r)) { continue }
+            foreach ($src in (Get-ChildItem -LiteralPath $r -Recurse -File -Include '*.java', '*.kt')) {
+                $lineNo = 0
+                foreach ($line in (Read-PaperDevText $src.FullName) -split "`r?`n") {
+                    $lineNo++
+                    if ($line -match '^\s*(//|\*|/\*)') { continue }
+                    if ($line -match '\.spigot\(\)') { Report 'error' 'CraftBukkit: .spigot() is Spigot API, missing on CraftBukkit servers' $src.FullName $lineNo }
+                    if ($line -match '\bnet\.md_5\.bungee\b') { Report 'error' 'CraftBukkit: net.md_5.bungee (BungeeCord chat) comes with Spigot, not with CraftBukkit' $src.FullName $lineNo }
+                }
+            }
+        }
+    }
     # Folia: a plugin that declares folia-supported must not use the BukkitScheduler (it throws on Folia).
     $foliaDeclared = ($d.Values['folia-supported'] -eq 'true')
     if ($foliaDeclared -or $versions.Platform -eq 'folia') {
@@ -144,7 +160,7 @@ if ($project.Kind -eq 'velocity') {
             }
         }
     }
-    if ($errors -eq 0) { Write-PaperDevStatus 'ok' ('descriptor ' + (Split-Path -Leaf $file) + ': ' + $name + ' ' + $d.Values['version'] + $(if ($api) { ', api-version ' + $api } else { '' }) + $(if ($versions.Minecraft) { ', builds against ' + $versions.Minecraft } else { '' })) }
+    if ($errors -eq 0) { Write-PaperDevStatus 'ok' ('descriptor ' + (Split-Path -Leaf $file) + ': ' + $name + ' ' + $d.Values['version'] + $(if ($api) { ', api-version ' + $api } else { '' }) + $(if ($versions.Minecraft) { ', builds against ' + $(if ($versions.Platform -ne 'paper') { $versions.Platform + ' ' } else { '' }) + $versions.Minecraft } else { '' })) }
 }
 
 if ($SkipBuild) {

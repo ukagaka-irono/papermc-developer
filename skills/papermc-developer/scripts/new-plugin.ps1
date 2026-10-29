@@ -14,6 +14,9 @@
   -Folia      also for Folia: "folia-supported: true" (Folia has builds from 1.19.4)
   -Velocity   a Velocity (proxy) plugin instead: @Plugin annotation, Brigadier /hello on the proxy, a join
               message; -VelocityVersion picks the Velocity API (default: the latest stable). No tests.
+  -Spigot / -CraftBukkit  a plugin for Spigot / CraftBukkit servers (it also runs on Paper): Bukkit API only,
+              spigot-api (org.bukkit:bukkit for CraftBukkit up to 1.15.2), plugin.yml commands, legacy color codes,
+              no tests. -Minecraft 1.8 or later (default: the newest version BuildTools can build).
   -Workflow   also creates .github/workflows/check.yml and release.yml
   -WrapperOnly only adds the Gradle wrapper to an existing project
   -DryRun     shows what would be created
@@ -32,6 +35,8 @@ param(
     [switch]$Folia,
     [switch]$Velocity,
     [string]$VelocityVersion,
+    [switch]$Spigot,
+    [switch]$CraftBukkit,
     [switch]$NoTests,
     [switch]$Workflow,
     [switch]$NoWrapper,
@@ -131,7 +136,38 @@ if ($Velocity) {
     $NoTests = $true
     $Minecraft = $VelocityVersion
 }
-if (-not $Velocity) {
+# Spigot / CraftBukkit: Bukkit API only (plugin.yml commands, legacy color codes), spigot-api or bukkit, no tests.
+$bukkitPlatform = $null
+if ($Spigot) { $bukkitPlatform = 'spigot' }
+if ($CraftBukkit) { $bukkitPlatform = 'craftbukkit' }
+if ($Spigot -and $CraftBukkit) { Write-PaperDevStatus 'error' 'choose one of -Spigot and -CraftBukkit'; exit 1 }
+if ($bukkitPlatform -and ($Velocity -or $Folia -or $PaperPlugin)) { Write-PaperDevStatus 'error' ('-' + $bukkitPlatform + ' cannot be combined with -Velocity, -Folia or -PaperPlugin'); exit 1 }
+if ($bukkitPlatform) {
+    try {
+        $spigotVersions = Get-PaperDevSpigotVersions
+        if (-not $Minecraft) { $Minecraft = $spigotVersions[0] }
+        if ($spigotVersions -notcontains $Minecraft) { Write-PaperDevStatus 'error' ('BuildTools cannot build ' + $Minecraft + ' (Spigot and CraftBukkit: 1.8 and later; scripts/versions.ps1 -List)'); exit 1 }
+        $sj = Get-PaperDevSpigotJava $Minecraft
+        $era = Get-PaperDevEra -Minecraft $Minecraft -JavaMinimum $sj.JavaMin
+        $era.JavaMin = $sj.JavaMin; $era.JavaMax = $sj.JavaMax; $era.JavaPreferred = $sj.JavaPreferred
+        $era.Brigadier = $false; $era.MiniMessage = $false; $era.PaperPlugin = $false
+        $javaVersion = $era.JavaPreferred
+        $apiDependency = Get-PaperDevApiDependency -Minecraft $Minecraft -Platform $bukkitPlatform
+        if (-not (Get-PaperDevLatestApiBuild -Minecraft $Minecraft -Platform $bukkitPlatform)) {
+            if ($bukkitPlatform -eq 'craftbukkit' -and $apiDependency.Artifact -eq 'bukkit') {
+                $apiDependency = Get-PaperDevApiDependency -Minecraft $Minecraft -Platform 'spigot'
+                Write-PaperDevStatus 'note' ('org.bukkit:bukkit has no ' + $Minecraft + '; compiling against spigot-api (use only the Bukkit part of it)')
+            }
+            if (-not (Get-PaperDevLatestApiBuild -Minecraft $Minecraft -Platform 'spigot')) { Write-PaperDevStatus 'warn' ($apiDependency.Coordinate + ' was not found in the Spigot repository; the build may fail') }
+        }
+        $foojay = Get-PaperDevGradlePluginVersion 'org.gradle.toolchains.foojay-resolver-convention'
+    } catch {
+        Write-PaperDevStatus 'error' ('version lookup failed (network?): ' + $_.Exception.Message)
+        exit 1
+    }
+    $NoTests = $true
+}
+if (-not $Velocity -and -not $bukkitPlatform) {
 try {
     if (-not $Minecraft) { $Minecraft = Get-PaperDevLatestMinecraft }
     if (-not (Test-PaperDevVersionAtLeast $Minecraft '1.7.10')) { Write-PaperDevStatus 'error' ('Paper versions before 1.7.10 are not supported (got ' + $Minecraft + ')'); exit 1 }
@@ -192,7 +228,11 @@ $tokens = @{
 $blocks = @()
 if ($Velocity) { $blocks += 'VELOCITY' }
 else {
-    $blocks += 'PAPER'
+    $blocks += 'BUKKIT'
+    if ($bukkitPlatform) {
+        $blocks += 'SPIGOT_REPO'
+        if ($bukkitPlatform -eq 'craftbukkit') { $blocks += @('CRAFTBUKKIT', 'SERVER_CRAFTBUKKIT') } else { $blocks += 'SERVER_SPIGOT' }
+    } else { $blocks += @('PAPER', 'SERVER_PAPER') }
     if (-not $NoTests) { $blocks += 'TESTS' }
     if ($era.Brigadier) { $blocks += 'BRIGADIER' } else { $blocks += 'LEGACY_COMMANDS' }
     if ($era.MiniMessage) { $blocks += 'MINIMESSAGE' } else { $blocks += 'LEGACY_TEXT' }
@@ -221,7 +261,8 @@ if ($Velocity) {
     Write-Host ('target:    Velocity ' + $VelocityVersion + ', Java ' + $javaVersion + ', ' + $apiDependency.Coordinate)
 } else {
 Write-Host ('plugin:    ' + $Name + ' (' + $Package + '.' + $mainClass + ', ' + $descriptorName + $(if ($Folia) { ', folia-supported' } else { '' }) + ')')
-Write-Host ('target:    Paper ' + $Minecraft + ', Java ' + $javaVersion + ', ' + $apiDependency.Coordinate + ', commands: ' + $(if ($era.Brigadier) { 'Brigadier' } else { 'plugin.yml + CommandExecutor' }) + ', text: ' + $(if ($era.MiniMessage) { 'MiniMessage' } else { 'legacy color codes' }))
+$platformName = 'Paper'; if ($bukkitPlatform -eq 'spigot') { $platformName = 'Spigot' } elseif ($bukkitPlatform -eq 'craftbukkit') { $platformName = 'CraftBukkit' }
+Write-Host ('target:    ' + $platformName + ' ' + $Minecraft + ', Java ' + $javaVersion + ', ' + $apiDependency.Coordinate + ', commands: ' + $(if ($era.Brigadier) { 'Brigadier' } else { 'plugin.yml + CommandExecutor' }) + ', text: ' + $(if ($era.MiniMessage) { 'MiniMessage' } else { 'legacy color codes' }))
 }
 foreach ($p in $plan) {
     $state = Write-PaperDevTemplateFile -Source $p.Source -Target (Join-Path $Path $p.Target) -Tokens $tokens -Blocks $blocks -DryRun:$DryRun

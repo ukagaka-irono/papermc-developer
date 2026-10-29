@@ -45,6 +45,19 @@ if ($platform -eq 'velocity') {
     $current.Minecraft = $current.Velocity
     $current.PaperApi = $current.Velocity
     $ApiVersion = $false
+} elseif ($platform -in @('spigot', 'craftbukkit')) {
+    # Spigot / CraftBukkit: the versions and Java ranges come from BuildTools; the code stays Bukkit API only.
+    try {
+        $spigotVersions = Get-PaperDevSpigotVersions
+        if (-not $Minecraft) { $Minecraft = $spigotVersions[0] }
+        if ($spigotVersions -notcontains $Minecraft) { Write-PaperDevStatus 'error' ('BuildTools cannot build ' + $Minecraft); exit 1 }
+        $sj = Get-PaperDevSpigotJava $Minecraft
+    } catch { Write-PaperDevStatus 'error' ('lookup failed: ' + $_.Exception.Message); exit 1 }
+    $era = Get-PaperDevEra -Minecraft $Minecraft -JavaMinimum $sj.JavaMin
+    $era.JavaMin = $sj.JavaMin; $era.JavaMax = $sj.JavaMax; $era.JavaPreferred = $sj.JavaPreferred
+    $era.Brigadier = $false; $era.MiniMessage = $false; $era.PaperPlugin = $false
+    $dep = Get-PaperDevApiDependency -Minecraft $Minecraft -Platform $platform
+    if (-not (Get-PaperDevLatestApiBuild -Minecraft $Minecraft -Platform $platform)) { $dep = Get-PaperDevApiDependency -Minecraft $Minecraft -Platform 'spigot' }
 } else {
 try {
     if (-not $Minecraft) { $Minecraft = Get-PaperDevLatestMinecraft -Project $platform }
@@ -98,7 +111,7 @@ foreach ($f in $files) {
         $text = Update-Text $f $text 'com\.velocitypowered:velocity-api:[0-9][^"''\s)]*' { param($m) $coordinate } 'api dependency'
         $text = Update-Text $f $text 'velocityVersion\(\s*"([^"]+)"\s*\)' { param($m) 'velocityVersion("' + $Minecraft + '")' } 'run-velocity'
         # The group and artifact change with the era (paperspigot-api, com.destroystokyo.paper, io.papermc.paper).
-        $text = Update-Text $f $text '(?:io\.papermc\.paper:paper-api|com\.destroystokyo\.paper:paper-api|org\.github\.paperspigot:paperspigot-api):[0-9][^"''\s)]*' { param($m) $coordinate } 'api dependency'
+        $text = Update-Text $f $text '(?:io\.papermc\.paper:paper-api|com\.destroystokyo\.paper:paper-api|org\.github\.paperspigot:paperspigot-api|org\.spigotmc:spigot-api|org\.bukkit:bukkit):[0-9][^"''\s)]*' { param($m) $coordinate } 'api dependency'
         $text = Update-Text $f $text 'dev\.folia:folia-api:[0-9][^"''\s)]*' { param($m) 'dev.folia:folia-api:' + $dep.Version } 'api dependency'
         $text = Update-Text $f $text 'JavaLanguageVersion\.of\(\s*(\d+)\s*\)' { param($m) 'JavaLanguageVersion.of(' + (Get-NewJava ([int]$m.Groups[1].Value)) + ')' } 'java toolchain'
         $text = Update-Text $f $text 'minecraftVersion\(\s*"([^"]+)"\s*\)' { param($m) 'minecraftVersion("' + $Minecraft + '")' } 'run-paper'
@@ -106,10 +119,10 @@ foreach ($f in $files) {
         elseif ($current.MockBukkit -and $era.Brigadier) { [void]$manual.Add('MockBukkit has no release for ' + $Minecraft + ' yet; keep ' + $current.MockBukkit + ' (tests may fail) or wait') }
         elseif ($current.MockBukkit) { [void]$manual.Add('MockBukkit (org.mockbukkit) is for 1.21 and later; remove the MockBukkit tests and dependencies for ' + $Minecraft + ' (references/testing.md)') }
         $apiChanged = @($changes | Where-Object { $_.File -eq $f -and $_.What -eq 'api dependency' }).Count -gt 0
-        if ($orig -match '(paper|paperspigot|folia)-api' -and -not $apiChanged -and $orig -notmatch [regex]::Escape($coordinate)) { [void]$manual.Add($leaf + ': the API dependency is declared in a form the script does not edit') }
+        if ($orig -match '(paper|paperspigot|folia|spigot)-api' -and -not $apiChanged -and $orig -notmatch [regex]::Escape($coordinate)) { [void]$manual.Add($leaf + ': the API dependency is declared in a form the script does not edit') }
     } elseif ($leaf -eq 'pom.xml') {
         $text = Update-Text $f $text '(<artifactId>velocity-api</artifactId>\s*<version>)([^<]+)(</version>)' { param($m) $m.Groups[1].Value + $dep.Version + $m.Groups[3].Value } 'api dependency'
-        $text = Update-Text $f $text '<groupId>(?:io\.papermc\.paper|com\.destroystokyo\.paper|org\.github\.paperspigot)</groupId>(\s*)<artifactId>(?:paper|paperspigot)-api</artifactId>(\s*)<version>[^<]+</version>' { param($m) '<groupId>' + $dep.Group + '</groupId>' + $m.Groups[1].Value + '<artifactId>' + $dep.Artifact + '</artifactId>' + $m.Groups[2].Value + '<version>' + $mavenVersion + '</version>' } 'api dependency'
+        $text = Update-Text $f $text '<groupId>(?:io\.papermc\.paper|com\.destroystokyo\.paper|org\.github\.paperspigot|org\.spigotmc|org\.bukkit)</groupId>(\s*)<artifactId>(?:paper-api|paperspigot-api|spigot-api|bukkit)</artifactId>(\s*)<version>[^<]+</version>' { param($m) '<groupId>' + $dep.Group + '</groupId>' + $m.Groups[1].Value + '<artifactId>' + $dep.Artifact + '</artifactId>' + $m.Groups[2].Value + '<version>' + $mavenVersion + '</version>' } 'api dependency'
         $text = Update-Text $f $text '<maven\.compiler\.(?:release|source|target)>(\d+(?:\.\d+)?)</maven\.compiler\.(release|source|target)>' { param($m) $old = [int](($m.Groups[1].Value -replace '^1\.', '')); '<maven.compiler.' + $m.Groups[2].Value + '>' + (Get-NewJava $old) + '</maven.compiler.' + $m.Groups[2].Value + '>' } 'java release'
     } elseif ($leaf -eq 'libs.versions.toml' -or $leaf -eq 'gradle.properties') {
         if ($text -match '(?im)^\s*(paper|minecraft|mc)[A-Za-z_.-]*\s*[=:]') { [void]$manual.Add($leaf + ': has version entries; edit them by hand (target ' + $Minecraft + ', paper-api ' + $coordinate + ')') }
@@ -148,7 +161,7 @@ foreach ($c in $changes) {
 foreach ($m in $manual) { Write-PaperDevStatus 'manual' $m }
 if (-not $ApiVersion -and $project.Descriptor) {
     $api = (Read-PaperDevDescriptor $project.Descriptor).Values['api-version']
-    Write-PaperDevStatus 'note' ('api-version stays ' + $api + ' (the oldest server version the plugin claims to support); -ApiVersion raises it')
+    Write-PaperDevStatus 'note' ('api-version stays ' + $(if ($api) { $api } else { '(none)' }) + ' (the oldest server version the plugin claims to support); -ApiVersion raises it')
 }
 if ($changes.Count -eq 0) {
     Write-PaperDevStatus 'ok' 'nothing to change'

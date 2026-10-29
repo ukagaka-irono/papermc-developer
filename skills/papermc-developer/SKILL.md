@@ -1,6 +1,6 @@
 ---
 name: papermc-developer
-description: Minecraft の PaperMC のプラグイン（Paper サーバー用（Bukkit/Spigot 互換の plugin.yml と、paper-plugin.yml。Paper 1.7.10 から最新の 26.x まで）、Folia 対応、Velocity プロキシ用）を作る・直す・動かして確かめる・配布する。新しいプラグインのひな形を作る、コマンド・イベント・設定・権限・スケジューラなどのコードを書く、ビルドやテストのエラーを直す、テスト用の Paper / Folia サーバーや Velocity プロキシ（と後ろの Paper サーバー）を立ててコマンドを送りログを見る、配布用の jar を作って GitHub Releases / Hangar / Modrinth に出す、Paper の版（paper-api、Java）を上げる、といったとき。settings.gradle.kts / build.gradle.kts（または pom.xml）と src/main/resources/plugin.yml（Velocity なら velocity-api の依存と @Plugin）のあるフォルダが対象。Minecraft plugin, Paper, Spigot, Bukkit, Folia, Velocity, proxy, Brigadier, Adventure, MiniMessage, MockBukkit, run-paper, run-velocity の話題を含む。
+description: Minecraft の PaperMC のプラグイン（Paper サーバー用（Bukkit/Spigot 互換の plugin.yml と、paper-plugin.yml。Paper 1.7.10 から最新の 26.x まで）、Folia 対応、Velocity プロキシ用、Spigot / CraftBukkit 用）を作る・直す・動かして確かめる・配布する。新しいプラグインのひな形を作る、コマンド・イベント・設定・権限・スケジューラなどのコードを書く、ビルドやテストのエラーを直す、テスト用の Paper / Folia / Spigot / CraftBukkit サーバー（Spigot と CraftBukkit は BuildTools で作る）や Velocity プロキシ（と後ろの Paper サーバー）を立ててコマンドを送りログを見る、配布用の jar を作って GitHub Releases / Hangar / Modrinth に出す、Paper の版（paper-api、Java）を上げる、といったとき。settings.gradle.kts / build.gradle.kts（または pom.xml）と src/main/resources/plugin.yml（Velocity なら velocity-api の依存と @Plugin）のあるフォルダが対象。Minecraft plugin, Paper, Spigot, CraftBukkit, Bukkit, BuildTools, Folia, Velocity, proxy, Brigadier, Adventure, MiniMessage, MockBukkit, run-paper, run-velocity の話題を含む。
 allowed-tools:
   - 'Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_SKILL_DIR}/scripts/doctor.ps1*)'
   - 'Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_SKILL_DIR}/scripts/versions.ps1*)'
@@ -21,7 +21,7 @@ allowed-tools:
 
 # papermc-developer
 
-Minecraft の **PaperMC** のプラグインを、AI と一緒に作る・直す・動かして確かめる・配布するためのスキル。対象は **Paper のプラグイン（1.7.10 から最新の 26.x まで）、その Folia 対応、Velocity（プロキシ）のプラグイン**。Velocity のプラグインは Paper のプラグインとは別物（`references/velocity.md`）。版によって使える API、Java、記述ファイルの書き方が違う（`references/versions.md`）。作者（ユーザー）は「何を作りたいか」に集中し、決まった作業（環境の準備、ビルドとテスト、テストサーバーでの確認、配布用 jar の作成、版の更新）はこちらで引き受ける。
+Minecraft の **PaperMC** のプラグインを、AI と一緒に作る・直す・動かして確かめる・配布するためのスキル。対象は **Paper のプラグイン（1.7.10 から最新の 26.x まで）、その Folia 対応、Velocity（プロキシ）のプラグイン、Spigot / CraftBukkit のプラグイン**。Velocity のプラグインは Paper のプラグインとは別物（`references/velocity.md`）。版によって使える API、Java、記述ファイルの書き方が違う（`references/versions.md`）。作者（ユーザー）は「何を作りたいか」に集中し、決まった作業（環境の準備、ビルドとテスト、テストサーバーでの確認、配布用 jar の作成、版の更新）はこちらで引き受ける。
 
 作者は、スキルの名前もコマンドも知らない。「〜して」という普通の言葉で頼まれる。何ができるかを聞かれたときや、準備を終えたときは、「〜と頼んでください」の形で例を示す。作者が Java や Gradle に慣れているとは限らない。説明は、何が起きたか・次に何をするかを先に、用語は短く添える程度にする。
 
@@ -67,6 +67,7 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 | 「Paper を最新にして」「1.21 から 26 に上げて」「対応バージョンを上げて」「今の最新は？」 | `references/workflows/update-paper.md` |
 | 「1.8.8 用のプラグインを作って」「1.12.2 のサーバーで動くようにして」「古い版にも対応したい」 | `references/versions.md`（作るなら `references/workflows/new-plugin.md`） |
 | 「Folia に対応して」「Folia でも動くようにして」「Folia で試して」 | `references/paper-api.md` の「Folia」 |
+| 「Spigot 用に作って」「CraftBukkit でも動くようにして」「Bukkit のプラグイン」「Spigot のサーバーで試して」 | `references/spigot.md`（作るなら `references/workflows/new-plugin.md`） |
 | 「Velocity のプラグインを作って」「プロキシ用のプラグイン」「BungeeCord から Velocity に移したい」「サーバー間を移動させたい」 | `references/velocity.md`（作るなら `references/workflows/new-plugin.md`） |
 | 「スキルを更新して」「papermc-developer を最新にして」 | `references/workflows/update-skill.md` |
 
@@ -75,14 +76,15 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 0. **ブランチは `main` / `develop` / `〇〇〇〇-fix` に分ける**（`references/workflows/branches.md`）。Git で管理しているプロジェクトでコードを変えるときは、先に今のブランチを確かめ、`main` か `develop` にいるなら `develop` から `〇〇〇〇-fix`（例: `hello-command-fix`）を作ってから変える。`main` と `develop` には直接コミットしない。作業ブランチは `develop` に戻し、リリースのときだけ `develop` を `main` に入れる。コミット、push、Pull Request、マージ、タグは作者に頼まれたときだけ。
 1. **コードやビルドの設定、`plugin.yml` / `paper-plugin.yml` を変えたら、必ず `scripts/check.ps1` を通す。** 記述ファイルの検査（main クラスの実在、api-version、`getCommand` と宣言の食い違い）、コンパイル、テストを行う。error が残ったまま「できました」と言わない。非推奨（deprecation）の警告は、新しく書いたコードのものは直す。
 2. **動きを確かめるときは、テスト（MockBukkit）とテストサーバーを使い分ける**（`references/testing.md`）。サーバーで確かめるときは `scripts/run-server.ps1` が立てる**テスト用のサーバー**だけを使う（ホームフォルダの中、127.0.0.1 だけで待ち受ける）。作者がふだん使っているサーバーや、公開しているサーバーには、作者に頼まれても、作者が自分で入れる手順を示すにとどめる。
-3. **Minecraft のサーバーを動かすには、作者が Minecraft の EULA（https://aka.ms/MinecraftEULA ）に同意している必要がある。** 同意はこちらで代わりにしない。テストサーバーを初めて使うときは、EULA の場所を示して作者に読んでもらい、作者が同意すると言ったときだけ `scripts/setup.ps1 -AcceptEula` を実行する。
-4. 仕様（Paper API のクラスやメソッド、イベント、`plugin.yml` / `paper-plugin.yml` の項目、Brigadier の引数型、Adventure / MiniMessage の書式）を**推測で書かない**。確かでないときは、下の「仕様を調べる」で確かめる。とくに、古い Bukkit / Spigot の書き方（`ChatColor`、`§`、文字列のメッセージ、`getCommand` と `CommandExecutor`、`BukkitRunnable` での世界の操作を非同期で行うことなど）を、知識のままで書かない（`references/paper-api.md` の「AI がやりがちな失敗」）。
-5. **サーバーのメインスレッドを止めない。** ファイル、データベース、ネットワークの処理は非同期で行い、ワールドやエンティティ、プレイヤーの操作はメインスレッド（Folia では、その場所のリージョン）に戻して行う。
-6. 依存の追加（ライブラリ、ほかのプラグイン）は、何のためか、ライセンス、jar に同梱するのか（shadow）を作者に伝えてから行う。サーバーの API（paper-api、Adventure、Brigadier）は `compileOnly` にし、jar に入れない。
-7. **編集しないもの**: `gradle/wrapper/` の中身（版を変えるのは `gradlew wrapper --gradle-version`）、`build/`、`run/`（`./gradlew runServer` の作業フォルダ）、他人のプラグインの jar。サーバーの内部（NMS、`net.minecraft`、paperweight-userdev）を使うのは、API で実現できないと確かめ、作者が版ごとの保守を引き受けると言ったときだけ。
-8. 既存のコードや作者が書いたメッセージを、頼まれていないのに大量に書き換えたり消したりしない。使われていないクラスや設定に気づいても、報告するだけにする。
-9. **作者の確認を取ってから行うこと**: アプリ（JDK、Git など）のインストール、EULA への同意の記録、Paper の版の更新、スキルの更新、リリース（タグの push、GitHub Releases、Hangar、Modrinth への公開）、ほかのサーバーへの jar の配置など、手元のファイル編集を超える操作。公開用のトークン（Hangar / Modrinth の API キー、GitHub のトークン）を、作者にチャットへ貼らせない。環境変数か、GitHub の Secrets に入れてもらう。
-10. `scripts/` の外から papermc-developer のスクリプトを書き換えない。足したい機能は、プロジェクトの側に置くか、https://github.com/ukagaka-irono/papermc-developer に提案する。
+3. **Spigot と CraftBukkit のテストサーバーは BuildTools で作る**（SpigotMC はサーバーの jar を配布していない）。BuildTools は外部のコードをダウンロードして動かすので、作るのは作者の了承を得てから（`references/spigot.md`）。
+4. **Minecraft のサーバーを動かすには、作者が Minecraft の EULA（https://aka.ms/MinecraftEULA ）に同意している必要がある。** 同意はこちらで代わりにしない。テストサーバーを初めて使うときは、EULA の場所を示して作者に読んでもらい、作者が同意すると言ったときだけ `scripts/setup.ps1 -AcceptEula` を実行する。
+5. 仕様（Paper API のクラスやメソッド、イベント、`plugin.yml` / `paper-plugin.yml` の項目、Brigadier の引数型、Adventure / MiniMessage の書式）を**推測で書かない**。確かでないときは、下の「仕様を調べる」で確かめる。とくに、古い Bukkit / Spigot の書き方（`ChatColor`、`§`、文字列のメッセージ、`getCommand` と `CommandExecutor`、`BukkitRunnable` での世界の操作を非同期で行うことなど）を、知識のままで書かない（`references/paper-api.md` の「AI がやりがちな失敗」）。
+6. **サーバーのメインスレッドを止めない。** ファイル、データベース、ネットワークの処理は非同期で行い、ワールドやエンティティ、プレイヤーの操作はメインスレッド（Folia では、その場所のリージョン）に戻して行う。
+7. 依存の追加（ライブラリ、ほかのプラグイン）は、何のためか、ライセンス、jar に同梱するのか（shadow）を作者に伝えてから行う。サーバーの API（paper-api、Adventure、Brigadier）は `compileOnly` にし、jar に入れない。
+8. **編集しないもの**: `gradle/wrapper/` の中身（版を変えるのは `gradlew wrapper --gradle-version`）、`build/`、`run/`（`./gradlew runServer` の作業フォルダ）、他人のプラグインの jar。サーバーの内部（NMS、`net.minecraft`、paperweight-userdev）を使うのは、API で実現できないと確かめ、作者が版ごとの保守を引き受けると言ったときだけ。
+9. 既存のコードや作者が書いたメッセージを、頼まれていないのに大量に書き換えたり消したりしない。使われていないクラスや設定に気づいても、報告するだけにする。
+10. **作者の確認を取ってから行うこと**: アプリ（JDK、Git など）のインストール、EULA への同意の記録、Paper の版の更新、スキルの更新、リリース（タグの push、GitHub Releases、Hangar、Modrinth への公開）、ほかのサーバーへの jar の配置など、手元のファイル編集を超える操作。公開用のトークン（Hangar / Modrinth の API キー、GitHub のトークン）を、作者にチャットへ貼らせない。環境変数か、GitHub の Secrets に入れてもらう。
+11. `scripts/` の外から papermc-developer のスクリプトを書き換えない。足したい機能は、プロジェクトの側に置くか、https://github.com/ukagaka-irono/papermc-developer に提案する。
 
 ## 仕様を調べる
 
@@ -108,6 +110,7 @@ Paper API、イベント、`plugin.yml` / `paper-plugin.yml` の項目、コマ�
 | `references/commands.md` | スクリプトの一覧、オプション、終了コード、ホームフォルダ |
 | `references/layout.md` | プロジェクトの構成。`build.gradle.kts`、`plugin.yml` と `paper-plugin.yml` の違い、何をコミットするか |
 | `references/paper-api.md` | 今の Paper でのコードの書き方の要点と、AI がやりがちな失敗 |
+| `references/spigot.md` | Spigot / CraftBukkit のプラグイン: Paper との違い（どの API がどこで動くか）、作り方、BuildTools でのテストサーバー |
 | `references/velocity.md` | Velocity（プロキシ）のプラグイン: 作り方、書き方の要点、AI がやりがちな失敗、テストのプロキシと後ろの Paper サーバー |
 | `references/versions.md` | 対応する版（1.7.10〜）と、版ごとの API の依存、Java、`api-version`、コマンドとメッセージの書き方の違い |
 | `references/testing.md` | MockBukkit のテストと、テストサーバーでの確認の使い分け |
