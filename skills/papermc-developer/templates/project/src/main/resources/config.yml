@@ -9,3 +9,18 @@ hello-message: "<green>Hello!"
 join-message: "&aWelcome, {player}!"
 hello-message: "&aHello!"
 @@END:LEGACY_TEXT@@
+@@BEGIN:DATABASE@@
+
+database:
+  # sqlite: a file in this plugin's folder (nothing to set up). mysql: a MySQL / MariaDB server.
+  type: sqlite
+  sqlite-file: data.db
+  mysql:
+    host: 127.0.0.1
+    port: 3306
+    database: minecraft
+    user: minecraft
+    password: ''
+    # JDBC connection properties, e.g. useSSL=true&serverTimezone=UTC
+    properties: ''
+@@END:DATABASE@@

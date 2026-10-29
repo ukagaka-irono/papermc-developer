@@ -41,6 +41,9 @@ switch ($v.Platform) {
     default { $blocks += 'SERVER_PAPER' }
 }
 if ($v.FoliaSupported -or $v.Platform -eq 'folia') { $blocks += 'FOLIA' } else { $blocks += 'NO_FOLIA' }
+# PLUGIN.md's database part when the code uses JDBC.
+$usesSql = @(Get-ChildItem -LiteralPath (Join-Path $project.Module 'src/main') -Recurse -File -Include '*.java', '*.kt' -ErrorAction SilentlyContinue | Where-Object { (Read-PaperDevText $_.FullName) -match 'java\.sql\.' }).Count -gt 0
+if ($usesSql) { $blocks += 'DATABASE' }
 # Message format in PLUGIN.md: MiniMessage where the API has it (Paper 1.18.2+), else "&" color codes.
 if ($v.Platform -notin @('spigot', 'craftbukkit') -and $v.Minecraft -and (Test-PaperDevVersionAtLeast $v.Minecraft '1.18.2')) { $blocks += 'MINIMESSAGE' } else { $blocks += 'LEGACY_TEXT' }
 if ($project.Kind -eq 'velocity') {

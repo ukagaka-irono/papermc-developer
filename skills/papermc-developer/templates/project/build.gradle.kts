@@ -30,6 +30,10 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:@@JUNIT@@"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+@@BEGIN:DATABASE@@
+    // The server provides the JDBC drivers; the tests need SQLite's themselves.
+    testRuntimeOnly("org.xerial:sqlite-jdbc:@@SQLITE_JDBC@@")
+@@END:DATABASE@@
 @@END:TESTS@@
 }
 

@@ -70,6 +70,15 @@ AI エージェントが作業の前に読む、このプラグインに固有�
 ## データ
 
 保存するもの（PDC、ファイル、データベース）と、その場所と形式。
+@@BEGIN:DATABASE@@
+
+| データベース | 既定 | 内容 |
+|---|---|---|
+| `config.yml` の `database.type` | `sqlite`（プラグインのフォルダの `data.db`） | `mysql` にすると `database.mysql` の接続先 |
+| 表 `hello_counts` | `name VARCHAR(64)` 主キー、`count INT` | `/hello` を言った回数（ひな形の例。消してよい） |
+
+クエリは `Database` クラスの専用のスレッドだけで行う（メインスレッドで行わない）。
+@@END:DATABASE@@
 
 ## 構成
 

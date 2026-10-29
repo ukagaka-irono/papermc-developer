@@ -1,6 +1,6 @@
 ---
 name: papermc-developer
-description: Minecraft の PaperMC のプラグイン（Paper サーバー用（Bukkit/Spigot 互換の plugin.yml と、paper-plugin.yml。Paper 1.7.10 から最新の 26.x まで）、Folia 対応、Velocity プロキシ用、Spigot / CraftBukkit 用）を作る・直す・動かして確かめる・配布する。新しいプラグインのひな形を作る、コマンド・イベント・設定・権限・スケジューラなどのコードを書く、ビルドやテストのエラーを直す、テスト用の Paper / Folia / Spigot / CraftBukkit サーバー（Spigot と CraftBukkit は BuildTools で作る）や Velocity プロキシ（と後ろの Paper サーバー）を立ててコマンドを送りログを見る、配布用の jar を作って GitHub Releases / Hangar / Modrinth に出す、Paper の版（paper-api、Java）を上げる、といったとき。settings.gradle.kts / build.gradle.kts（または pom.xml）と src/main/resources/plugin.yml（Velocity なら velocity-api の依存と @Plugin）のあるフォルダが対象。Minecraft plugin, Paper, Spigot, CraftBukkit, Bukkit, BuildTools, Folia, Velocity, proxy, Brigadier, Adventure, MiniMessage, MockBukkit, run-paper, run-velocity の話題を含む。
+description: Minecraft の PaperMC のプラグイン（Paper サーバー用（Bukkit/Spigot 互換の plugin.yml と、paper-plugin.yml。Paper 1.7.10 から最新の 26.x まで）、Folia 対応、Velocity プロキシ用、Spigot / CraftBukkit 用）を作る・直す・動かして確かめる・配布する。新しいプラグインのひな形を作る、コマンド・イベント・設定・権限・スケジューラ・データベース（SQLite、MySQL）などのコードを書く、ビルドやテストのエラーを直す、テスト用の Paper / Folia / Spigot / CraftBukkit サーバー（Spigot と CraftBukkit は BuildTools で作る）や Velocity プロキシ（と後ろの Paper サーバー）を立ててコマンドを送りログを見る、配布用の jar を作って GitHub Releases / Hangar / Modrinth に出す、Paper の版（paper-api、Java）を上げる、といったとき。settings.gradle.kts / build.gradle.kts（または pom.xml）と src/main/resources/plugin.yml（Velocity なら velocity-api の依存と @Plugin）のあるフォルダが対象。Minecraft plugin, SQLite, MySQL, JDBC, Paper, Spigot, CraftBukkit, Bukkit, BuildTools, Folia, Velocity, proxy, Brigadier, Adventure, MiniMessage, MockBukkit, run-paper, run-velocity の話題を含む。
 allowed-tools:
   - 'Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_SKILL_DIR}/scripts/doctor.ps1*)'
   - 'Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_SKILL_DIR}/scripts/versions.ps1*)'
@@ -68,6 +68,7 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 | 「1.8.8 用のプラグインを作って」「1.12.2 のサーバーで動くようにして」「古い版にも対応したい」 | `references/versions.md`（作るなら `references/workflows/new-plugin.md`） |
 | 「Folia に対応して」「Folia でも動くようにして」「Folia で試して」 | `references/paper-api.md` の「Folia」 |
 | 「Spigot 用に作って」「CraftBukkit でも動くようにして」「Bukkit のプラグイン」「Spigot のサーバーで試して」 | `references/spigot.md`（作るなら `references/workflows/new-plugin.md`） |
+| 「データを保存したい」「SQLite に保存して」「MySQL に対応して」「データベースを使いたい」 | `references/database.md`（作るなら `new-plugin.ps1 -Database`） |
 | 「Velocity のプラグインを作って」「プロキシ用のプラグイン」「BungeeCord から Velocity に移したい」「サーバー間を移動させたい」 | `references/velocity.md`（作るなら `references/workflows/new-plugin.md`） |
 | 「スキルを更新して」「papermc-developer を最新にして」 | `references/workflows/update-skill.md` |
 
@@ -111,6 +112,7 @@ Paper API、イベント、`plugin.yml` / `paper-plugin.yml` の項目、コマ�
 | `references/layout.md` | プロジェクトの構成。`build.gradle.kts`、`plugin.yml` と `paper-plugin.yml` の違い、何をコミットするか |
 | `references/paper-api.md` | 今の Paper でのコードの書き方の要点と、AI がやりがちな失敗 |
 | `references/spigot.md` | Spigot / CraftBukkit のプラグイン: Paper との違い（どの API がどこで動くか）、作り方、BuildTools でのテストサーバー |
+| `references/database.md` | SQLite と MySQL: サーバーが同梱するドライバー、ひな形の `Database`、書くときの決まり（スレッド、`PreparedStatement`、両方で通る SQL）、テスト用の MySQL サーバー |
 | `references/velocity.md` | Velocity（プロキシ）のプラグイン: 作り方、書き方の要点、AI がやりがちな失敗、テストのプロキシと後ろの Paper サーバー |
 | `references/versions.md` | 対応する版（1.7.10〜）と、版ごとの API の依存、Java、`api-version`、コマンドとメッセージの書き方の違い |
 | `references/testing.md` | MockBukkit のテストと、テストサーバーでの確認の使い分け |

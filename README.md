@@ -7,7 +7,7 @@ Minecraft の **PaperMC**（[Paper](https://papermc.io/software/paper)、[Folia]
 | | |
 |---|---|
 | 作る | 対象の版に合わせたプロジェクトのひな形（Gradle、Java、コマンド、メッセージ、テスト）。最新の版なら Brigadier と MiniMessage と MockBukkit、1.8.8 などの古い版なら `plugin.yml` のコマンドと色コードと Java 8、というように、API の依存、Java、`api-version` まで版ごとに変わる。版はその場で調べる |
-| 書く | コマンド、イベント、設定、権限、スケジューラ、PDC など。対象の版の API で書く（最新の版では、AI がやりがちな古い書き方（`ChatColor`、`getCommand` の宣言漏れ、非同期でのワールド操作など）を避け、古い版では、その版に無い API を使わない） |
+| 書く | コマンド、イベント、設定、権限、スケジューラ、PDC、データベース（SQLite / MySQL）など。対象の版の API で書く（最新の版では、AI がやりがちな古い書き方（`ChatColor`、`getCommand` の宣言漏れ、非同期でのワールド操作など）を避け、古い版では、その版に無い API を使わない） |
 | 確かめる | 記述ファイルの検査、コンパイル、テストを 1 回で行い、エラーを `ファイル:行` で示して直す。javac の表示が日本語でも読む |
 | 動かして見せる | 作者のサーバーとは別のテスト用 Paper / Folia / Spigot / CraftBukkit サーバー（Spigot と CraftBukkit は、作者の了承を得て BuildTools で作る）、または Velocity プロキシとその後ろの Paper サーバーをバックグラウンドで立て、プラグインが有効になったか、ログのエラーを報告する。RCON でコマンドを送って結果を見る。作者はクライアントで `localhost` に入って触れる |
 | 配布する | 中身を検査した配布用 jar（サーバーの API を同梱していないか、版が埋まっているか）。GitHub Actions、GitHub Releases、Hangar、Modrinth への公開の手伝い |
@@ -74,6 +74,7 @@ claude plugin install papermc-developer --scope project
 Folia でも動くようにして
 Velocity のプラグインを作って
 Spigot でも動くように作って
+プレイヤーのデータを MySQL に保存できるようにして
 /home コマンドを足して
 チェックして
 サーバーで動かして見せて

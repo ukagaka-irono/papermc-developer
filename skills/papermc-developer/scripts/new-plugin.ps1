@@ -17,6 +17,8 @@
   -Spigot / -CraftBukkit  a plugin for Spigot / CraftBukkit servers (it also runs on Paper): Bukkit API only,
               spigot-api (org.bukkit:bukkit for CraftBukkit up to 1.15.2), plugin.yml commands, legacy color codes,
               no tests. -Minecraft 1.8 or later (default: the newest version BuildTools can build).
+  -Database   a database layer: Database.java (SQLite by default, MySQL by config.yml), queries on their own
+              thread, /hello counts per sender in the table hello_counts, a JUnit test on SQLite. Not for -Velocity.
   -Workflow   also creates .github/workflows/check.yml and release.yml
   -WrapperOnly only adds the Gradle wrapper to an existing project
   -DryRun     shows what would be created
@@ -36,6 +38,7 @@ param(
     [switch]$Velocity,
     [string]$VelocityVersion,
     [switch]$Spigot,
+    [switch]$Database,
     [switch]$CraftBukkit,
     [switch]$NoTests,
     [switch]$Workflow,
@@ -112,6 +115,7 @@ if (-not $Package) {
 }
 if ($Package -notmatch '^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)+$') { Write-PaperDevStatus 'error' ('not a valid package name: ' + $Package + ' (lowercase, dot separated)'); exit 1 }
 
+if ($Velocity -and $Database) { Write-PaperDevStatus 'error' '-Database is for Paper / Spigot / CraftBukkit plugins (Velocity ships no JDBC drivers: references/database.md)'; exit 1 }
 if ($Velocity -and ($PaperPlugin -or $Folia)) { Write-PaperDevStatus 'error' '-Velocity cannot be combined with -PaperPlugin or -Folia (a proxy plugin is a different kind of plugin)'; exit 1 }
 $velocityId = ConvertTo-PaperDevKebab $Name
 if ($Velocity -and $velocityId -notmatch '^[a-z][a-z0-9_-]{0,63}$') { Write-PaperDevStatus 'error' ('cannot make a Velocity plugin id from "' + $Name + '" (it must start with a letter)'); exit 1 }
@@ -210,6 +214,10 @@ $descriptorText = 'plugin.yml (Bukkit)'
 if ($PaperPlugin) { $descriptorName = 'paper-plugin.yml'; $descriptorText = 'paper-plugin.yml (Paper plugin)' }
 if ($Velocity) { $descriptorName = $null; $descriptorText = 'velocity-plugin.json (generated from @Plugin)' }
 $authorsJava = ''
+$sqliteJdbc = ''
+if ($Database -and -not $NoTests) {
+    try { $sqliteJdbc = Get-PaperDevMavenRelease -Repository $PaperDevMavenCentral -Group 'org.xerial' -Artifact 'sqlite-jdbc' } catch { Write-PaperDevStatus 'error' ('version lookup failed (network?): ' + $_.Exception.Message); exit 1 }
+}
 if ($Author) { $authorsJava = '"' + $Author.Replace('\', '\\').Replace('"', '\"') + '"' }
 $tokens = @{
     PLUGIN_NAME = $Name; PROJECT_NAME = $projectName; MAIN_CLASS = $mainClass
@@ -222,6 +230,7 @@ $tokens = @{
     MOCKBUKKIT_ARTIFACT = $(if ($mock) { $mock.Artifact } else { '' }); MOCKBUKKIT_VERSION = $(if ($mock) { $mock.Version } else { '' })
     JUNIT = [string]$junit; DESCRIPTOR = $descriptorText
     VELOCITY = $(if ($Velocity) { $VelocityVersion } else { '' }); RUN_VELOCITY = [string]$runVelocity; VELOCITY_ID = $velocityId
+    SQLITE_JDBC = [string]$sqliteJdbc
     DESCRIPTION_JAVA = $Description.Replace('\', '\\').Replace('"', '\"'); AUTHORS_JAVA = $authorsJava
 }
 # Blocks of the templates: the platform, and for Paper the era (scripts/lib/common.ps1 Get-PaperDevEra).
@@ -238,6 +247,7 @@ else {
     if ($era.MiniMessage) { $blocks += 'MINIMESSAGE' } else { $blocks += 'LEGACY_TEXT' }
     if ($era.ApiVersion) { $blocks += 'API_VERSION' }
     if ($Folia) { $blocks += 'FOLIA' } else { $blocks += 'NO_FOLIA' }
+    if ($Database) { $blocks += 'DATABASE' } else { $blocks += 'NO_DATABASE' }
 }
 
 $templateDir = Get-PaperDevTemplateDir
