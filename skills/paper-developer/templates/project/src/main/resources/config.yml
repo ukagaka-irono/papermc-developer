@@ -1,0 +1,4 @@
+# @@PLUGIN_NAME@@ settings.
+# Messages use MiniMessage: https://docs.papermc.io/adventure/minimessage/format/
+join-message: "<green>Welcome, <player>!"
+hello-message: "<green>Hello!"

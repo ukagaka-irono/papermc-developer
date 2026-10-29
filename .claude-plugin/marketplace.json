@@ -1,0 +1,14 @@
+{
+  "name": "paper-developer",
+  "description": "Minecraft の Paper プラグイン開発を AI と進めるためのスキル。",
+  "owner": {
+    "name": "ukagaka-irono"
+  },
+  "plugins": [
+    {
+      "name": "paper-developer",
+      "source": "./",
+      "description": "Minecraft の Paper サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布する。"
+    }
+  ]
+}
