@@ -12,6 +12,11 @@
 - 対象の版のサーバーが動く Java（`scripts/doctor.ps1` の `server-java`）。**古い版のサーバーは新しい Java では起動しない**（1.16.5 以前は Java 8〜11、1.17 は 17。`references/versions.md`）。インストールされている JDK（Gradle のツールチェーン、IntelliJ が入れたものも）から、合うものを `run-server.ps1` が自動で選ぶ。無ければ終了コード 3 で、入れる JDK の版を表示する。作者に「Minecraft <版> のテストサーバーには Java <n> が要ります。Eclipse Temurin <n>（100〜200 MB）をホームフォルダに入れてよいですか？」と確かめてから `scripts/setup.ps1 -Jdk <n>`。作者が入れてある JDK を使うなら `scripts/setup.ps1 -JavaPath <JDK のフォルダ>` で登録する。
 - プロジェクトの版と違う版のサーバーで試すときは `-Minecraft <版>`（複数の版で動かすプラグインの確認。プラグインはプロジェクトの API でビルドされる）。
 
+## Folia と Velocity
+
+- **Folia**: `folia-supported: true` のプラグインは、`scripts/run-server.ps1 -Platform folia` で Folia のサーバーでも試す（プロジェクトの版に Folia のビルドが無ければ `-Minecraft <版>`。`scripts/versions.ps1` の `Folia versions`）。Paper のサーバーでの確認（ふだんの `run-server.ps1`）と両方を行う。
+- **Velocity**: Velocity のプロジェクトでは、`scripts/run-server.ps1` がテスト用の Velocity プロキシと、その後ろの Paper サーバーを立てる（`scripts/run-proxy.ps1`）。コマンドはプロキシのコンソールに送られ（`scripts/rcon.ps1 "hello"`）、返事はログに出る。後ろのサーバーには `-Backend`。作者が入るのはプロキシのポート。詳しくは `references/velocity.md` の「テストのプロキシで確かめる」。
+
 ## 手順
 
 1. 起動する: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-server.ps1`

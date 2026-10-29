@@ -39,7 +39,7 @@ try {
     $gradle = $null
     try { $gradle = (Get-PaperDevGradleCurrent).Version } catch { }
     $plugins = [ordered]@{}
-    foreach ($id in @('xyz.jpenilla.run-paper', 'com.gradleup.shadow', 'io.papermc.paperweight.userdev', 'org.gradle.toolchains.foojay-resolver-convention', 'io.papermc.hangar-publish-plugin', 'com.modrinth.minotaur')) {
+    foreach ($id in @('xyz.jpenilla.run-paper', 'xyz.jpenilla.run-velocity', 'com.gradleup.shadow', 'io.papermc.paperweight.userdev', 'org.gradle.toolchains.foojay-resolver-convention', 'io.papermc.hangar-publish-plugin', 'com.modrinth.minotaur')) {
         try { $plugins[$id] = Get-PaperDevGradlePluginVersion $id } catch { $plugins[$id] = $null }
     }
     $recent = @()
@@ -51,6 +51,9 @@ try {
             $recent += [PSCustomObject]@{ version = $v; support = $vi.Support; java = $vi.JavaMinimum }
         }
     }
+    $velocity = $null; $velocityJava = $null; $foliaVersions = @()
+    try { $velocity = Get-PaperDevLatestVelocity; $velocityJava = [int](Get-PaperDevVersionInfo -Minecraft $velocity -Project 'velocity').JavaMinimum } catch { }
+    try { $foliaVersions = @(Get-PaperDevMinecraftVersions 'folia') } catch { }
     $folia = $null
     try { if ((Get-PaperDevMinecraftVersions 'folia') -contains $mc) { $folia = $mc } } catch { }
 
@@ -70,6 +73,10 @@ try {
         paperApiLatest = $api
         apiVersionField = (Get-PaperDevApiVersionField $mc)
         foliaAvailable = [bool]$folia
+        foliaVersions = $foliaVersions
+        velocity = $velocity
+        velocityJava = $velocityJava
+        velocityApiDependency = $(if ($velocity) { 'com.velocitypowered:velocity-api:' + $velocity } else { $null })
         mockbukkit = $(if ($mock) { 'org.mockbukkit.mockbukkit:' + $mock.Artifact + ':' + $mock.Version } else { $null })
         gradle = $gradle
         gradlePlugins = $plugins
@@ -90,6 +97,8 @@ try {
     Write-Host ('  paper-plugin.yml:  ' + $(if ($era.PaperPlugin) { 'yes' } else { 'no (plugin.yml only)' }))
     Write-Host ('  Folia:             ' + $(if ($folia) { 'available' } else { 'no build for this version' }))
     Write-Host ('  MockBukkit:        ' + $(if ($mock) { 'org.mockbukkit.mockbukkit:' + $mock.Artifact + ':' + $mock.Version } else { 'none for this version yet' }))
+    Write-Host ('Folia versions:      ' + ($foliaVersions -join ' '))
+    Write-Host ('Velocity (proxy):    ' + $velocity + ', Java ' + $velocityJava + '+, compileOnly + annotationProcessor("com.velocitypowered:velocity-api:' + $velocity + '")')
     Write-Host ('gradle:              ' + $gradle)
     foreach ($k in $plugins.Keys) { Write-Host ('  ' + $k.PadRight(50) + $plugins[$k]) }
     if ($current) {

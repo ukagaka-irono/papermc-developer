@@ -33,15 +33,25 @@ $java = $v.Java
 if (-not $java) { $java = 21 }
 $descriptorText = 'plugin.yml (Bukkit)'
 if ($project.Kind -eq 'paper') { $descriptorText = 'paper-plugin.yml (Paper plugin)' }
+$target = [string]$v.Minecraft
+$blocks = @('PAPER')
+if ($v.FoliaSupported -or $v.Platform -eq 'folia') { $blocks += 'FOLIA' } else { $blocks += 'NO_FOLIA' }
+if ($project.Kind -eq 'velocity') {
+    $descriptorText = 'velocity-plugin.json (generated from @Plugin)'
+    $target = [string]$v.Velocity
+    $blocks = @('VELOCITY')
+    $vp = Get-PaperDevVelocityPlugin $project
+    if ($vp -and $vp.Main -match '^(.+)\.([^.]+)$') { $package = $Matches[1]; $main = $Matches[2] }
+}
 $tokens = @{
-    PLUGIN_NAME = $name; MINECRAFT = [string]$v.Minecraft; JAVA = [string]$java; DESCRIPTOR = $descriptorText
+    PLUGIN_NAME = $name; MINECRAFT = $target; JAVA = [string]$java; DESCRIPTOR = $descriptorText
     PACKAGE = $package; MAIN_CLASS = $main; PERMISSION_PREFIX = ($name.ToLowerInvariant() -replace '[^a-z0-9_]', '')
 }
 $templateDir = Get-PaperDevTemplateDir
 $starter = Get-PaperDevStarterFiles -Workflow:$Workflow
 Write-Host ('project: ' + $project.Root)
 foreach ($k in $starter.Keys) {
-    $state = Write-PaperDevTemplateFile -Source (Join-Path $templateDir $k) -Target (Join-Path $project.Root $starter[$k]) -Tokens $tokens -Blocks @() -DryRun:$DryRun
+    $state = Write-PaperDevTemplateFile -Source (Join-Path $templateDir $k) -Target (Join-Path $project.Root $starter[$k]) -Tokens $tokens -Blocks $blocks -DryRun:$DryRun
     Write-PaperDevStatus $state $starter[$k]
 }
 if ($Workflow -and $project.BuildTool -eq 'maven') { Write-PaperDevStatus 'note' 'the workflows run ./gradlew; change them to ./mvnw -B package for Maven' }

@@ -50,7 +50,18 @@ try {
     $descName = $null
     foreach ($n in @('paper-plugin.yml', 'plugin.yml')) { if ($names -contains $n) { $descName = $n; break } }
     $version = $null; $name = $null; $main = $null
-    if (-not $descName) { Write-PaperDevStatus 'error' 'the jar has no plugin.yml or paper-plugin.yml at its root'; $problems++ }
+    if ($project.Kind -eq 'velocity') {
+        # Velocity: velocity-plugin.json, written by the annotation processor from @Plugin.
+        if ($names -notcontains 'velocity-plugin.json') { Write-PaperDevStatus 'error' 'the jar has no velocity-plugin.json (annotationProcessor("com.velocitypowered:velocity-api:...") missing? references/velocity.md)'; $problems++ }
+        else {
+            $reader = New-Object System.IO.StreamReader($zip.GetEntry('velocity-plugin.json').Open(), [System.Text.Encoding]::UTF8)
+            try { $json = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
+            $version = [string]$json.version; $name = [string]$json.id; $main = [string]$json.main
+            if (-not $version) { Write-PaperDevStatus 'error' 'velocity-plugin.json has no version (@Plugin version)'; $problems++ }
+            if ($main -and ($names -notcontains (($main -replace '\.', '/') + '.class'))) { Write-PaperDevStatus 'error' ('main class ' + $main + ' is not in the jar'); $problems++ }
+        }
+    }
+    elseif (-not $descName) { Write-PaperDevStatus 'error' 'the jar has no plugin.yml or paper-plugin.yml at its root'; $problems++ }
     else {
         $entry = $zip.GetEntry($descName)
         $reader = New-Object System.IO.StreamReader($entry.Open(), [System.Text.Encoding]::UTF8)
@@ -63,7 +74,7 @@ try {
         if (-not $version -or $version -match '\$\{') { Write-PaperDevStatus 'error' ('the version in ' + $descName + ' was not filled in: "' + $version + '" (processResources expand, references/layout.md)'); $problems++ }
         if ($main -and ($names -notcontains (($main -replace '\.', '/') + '.class'))) { Write-PaperDevStatus 'error' ('main class ' + $main + ' is not in the jar'); $problems++ }
     }
-    $apiPrefixes = @('org/bukkit/', 'io/papermc/paper/', 'net/kyori/adventure/', 'com/mojang/brigadier/', 'net/minecraft/')
+    $apiPrefixes = @('org/bukkit/', 'io/papermc/paper/', 'net/kyori/adventure/', 'com/mojang/brigadier/', 'net/minecraft/', 'com/velocitypowered/', 'com/google/inject/')
     foreach ($p in $apiPrefixes) {
         $hits = @($names | Where-Object { $_.StartsWith($p) -and $_.EndsWith('.class') })
         if ($hits.Count -gt 0) { Write-PaperDevStatus 'error' ($hits.Count.ToString() + ' class(es) under ' + $p + ' are inside the jar: the server provides them; use compileOnly, not implementation'); $problems++ }

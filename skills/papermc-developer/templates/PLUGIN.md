@@ -12,8 +12,18 @@ AI エージェントが作業の前に読む、このプラグインに固有�
 
 | | |
 |---|---|
+@@BEGIN:PAPER@@
 | サーバー | Paper @@MINECRAFT@@ |
+@@BEGIN:FOLIA@@
+| Folia | 対応する（`folia-supported: true`。スケジューラはリージョン用のものだけを使う） |
+@@END:FOLIA@@
+@@BEGIN:NO_FOLIA@@
 | Folia | 対応しない |
+@@END:NO_FOLIA@@
+@@END:PAPER@@
+@@BEGIN:VELOCITY@@
+| サーバー | Velocity @@MINECRAFT@@（プロキシ。後ろの Paper サーバーには入らない） |
+@@END:VELOCITY@@
 | Java | @@JAVA@@ |
 | 形式 | @@DESCRIPTOR@@ |
 | 依存プラグイン | なし |
@@ -22,15 +32,25 @@ AI エージェントが作業の前に読む、このプラグインに固有�
 
 | コマンド | 権限 | 既定 | 内容 |
 |---|---|---|---|
+@@BEGIN:PAPER@@
 | `/hello` | `@@PERMISSION_PREFIX@@.hello` | 全員 | あいさつを返す（ひな形の例。消してよい） |
+@@END:PAPER@@
+@@BEGIN:VELOCITY@@
+| `/hello`（プロキシのコマンド） | なし | 全員 | あいさつを返す（ひな形の例。消してよい） |
+@@END:VELOCITY@@
 
 ## 設定ファイル
 
+@@BEGIN:PAPER@@
 `config.yml` のキーと意味。メッセージは MiniMessage で書く。
 
 | キー | 既定 | 意味 |
 |---|---|---|
 | `join-message` | `<green>Welcome, <player>!` | 参加したときのメッセージ（ひな形の例） |
+@@END:PAPER@@
+@@BEGIN:VELOCITY@@
+（ひな形には設定ファイルが無い。足すなら、プラグインのデータフォルダ（`@DataDirectory`）に置くファイルと、そのキー）
+@@END:VELOCITY@@
 
 ## データ
 
@@ -44,7 +64,9 @@ AI エージェントが作業の前に読む、このプラグインに固有�
 
 ## 決まり
 
+@@BEGIN:PAPER@@
 - メッセージは `config.yml` に置き、コードに直接書かない。
+@@END:PAPER@@
 - 
 
 ## 動作確認
@@ -53,7 +75,13 @@ AI エージェントが作業の前に読む、このプラグインに固有�
 
 | 操作 | 期待する結果 |
 |---|---|
+@@BEGIN:PAPER@@
 | `hello`（RCON から） | `Hello!` が返る |
+@@END:PAPER@@
+@@BEGIN:VELOCITY@@
+| `hello`（プロキシのコンソールから） | ログに `Hello from the proxy!` が出る |
+| プロキシ（`localhost:<ポート>`）にクライアントで入る | `Welcome to the proxy, <名前>!` が出て、後ろの Paper サーバーに着く |
+@@END:VELOCITY@@
 
 ## ブランチ
 

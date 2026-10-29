@@ -37,6 +37,7 @@
 
 - https://modrinth.com/ 。プロジェクトは作者が Web で作る（種類は Plugin、ローダーに Paper（と Folia、Purpur など動くもの）を選ぶ）。
 - 自動にするなら、Gradle プラグイン `com.modrinth.minotaur` を足し、トークンを環境変数 `MODRINTH_TOKEN` から読む。書き方は、そのプラグインの README を読んでから書く。
+- Velocity のプラグインは、Hangar でも Modrinth でも、プラットフォーム（ローダー）に Velocity を選ぶ。Folia で動くプラグインは、Modrinth ならローダーに Folia も選ぶ。
 - 公開の前に、Modrinth の規則（https://modrinth.com/legal/rules ）を読む。
 
 ### 公開した後

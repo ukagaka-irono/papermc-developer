@@ -10,6 +10,10 @@
   (Gradle is downloaded once into the home folder). Existing files are never overwritten.
   -Path       the project folder (default: the working folder if it has no project in it and is empty
               apart from .git/.idea, else a new folder named after the plugin)
+  -Minecraft  the Paper version, 1.7.10 or later (default: the latest stable)
+  -Folia      also for Folia: "folia-supported: true" (Folia has builds from 1.19.4)
+  -Velocity   a Velocity (proxy) plugin instead: @Plugin annotation, Brigadier /hello on the proxy, a join
+              message; -VelocityVersion picks the Velocity API (default: the latest stable). No tests.
   -Workflow   also creates .github/workflows/check.yml and release.yml
   -WrapperOnly only adds the Gradle wrapper to an existing project
   -DryRun     shows what would be created
@@ -25,6 +29,9 @@ param(
     [string]$Author,
     [string]$Minecraft,
     [switch]$PaperPlugin,
+    [switch]$Folia,
+    [switch]$Velocity,
+    [string]$VelocityVersion,
     [switch]$NoTests,
     [switch]$Workflow,
     [switch]$NoWrapper,
@@ -100,7 +107,31 @@ if (-not $Package) {
 }
 if ($Package -notmatch '^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)+$') { Write-PaperDevStatus 'error' ('not a valid package name: ' + $Package + ' (lowercase, dot separated)'); exit 1 }
 
+if ($Velocity -and ($PaperPlugin -or $Folia)) { Write-PaperDevStatus 'error' '-Velocity cannot be combined with -PaperPlugin or -Folia (a proxy plugin is a different kind of plugin)'; exit 1 }
+$velocityId = ConvertTo-PaperDevKebab $Name
+if ($Velocity -and $velocityId -notmatch '^[a-z][a-z0-9_-]{0,63}$') { Write-PaperDevStatus 'error' ('cannot make a Velocity plugin id from "' + $Name + '" (it must start with a letter)'); exit 1 }
+$foojay = $null
+
 # Versions, looked up now
+if ($Velocity) {
+    try {
+        if (-not $VelocityVersion) { $VelocityVersion = Get-PaperDevLatestVelocity }
+        if ((Get-PaperDevMinecraftVersions 'velocity') -notcontains $VelocityVersion) { Write-PaperDevStatus 'error' ('Velocity has no version ' + $VelocityVersion); exit 1 }
+        $vinfo = Get-PaperDevVersionInfo -Minecraft $VelocityVersion -Project 'velocity'
+        $javaVersion = [int]$vinfo.JavaMinimum
+        if ($javaVersion -lt 17) { $javaVersion = 17 }
+        $era = [PSCustomObject]@{ JavaMin = $javaVersion; JavaMax = 99; JavaPreferred = $javaVersion }
+        $apiDependency = [PSCustomObject]@{ Coordinate = ('com.velocitypowered:velocity-api:' + $VelocityVersion) }
+        $runVelocity = Get-PaperDevGradlePluginVersion 'xyz.jpenilla.run-velocity'
+        $foojay = Get-PaperDevGradlePluginVersion 'org.gradle.toolchains.foojay-resolver-convention'
+    } catch {
+        Write-PaperDevStatus 'error' ('version lookup failed (network?): ' + $_.Exception.Message)
+        exit 1
+    }
+    $NoTests = $true
+    $Minecraft = $VelocityVersion
+}
+if (-not $Velocity) {
 try {
     if (-not $Minecraft) { $Minecraft = Get-PaperDevLatestMinecraft }
     if (-not (Test-PaperDevVersionAtLeast $Minecraft '1.7.10')) { Write-PaperDevStatus 'error' ('Paper versions before 1.7.10 are not supported (got ' + $Minecraft + ')'); exit 1 }
@@ -118,6 +149,10 @@ try {
         Write-PaperDevStatus 'error' ('-PaperPlugin needs Paper 1.20.6 or later (the template registers commands with the lifecycle API); ' + $Minecraft + ' uses plugin.yml')
         exit 1
     }
+    if ($Folia -and (Get-PaperDevMinecraftVersions 'folia') -notcontains $Minecraft) {
+        Write-PaperDevStatus 'error' ('Folia has no build for ' + $Minecraft + ' (Folia versions: ' + ((Get-PaperDevMinecraftVersions 'folia') -join ', ') + ')')
+        exit 1
+    }
     if (-not $NoTests) {
         # The templates' tests use MockBukkit's current packages (org.mockbukkit), released for 1.21 and later.
         if ($era.Brigadier) { $mock = Get-PaperDevMockBukkit -Minecraft $Minecraft }
@@ -132,10 +167,14 @@ try {
     Write-PaperDevStatus 'error' ('version lookup failed (network?): ' + $_.Exception.Message)
     exit 1
 }
+}
 
 $descriptorName = 'plugin.yml'
 $descriptorText = 'plugin.yml (Bukkit)'
 if ($PaperPlugin) { $descriptorName = 'paper-plugin.yml'; $descriptorText = 'paper-plugin.yml (Paper plugin)' }
+if ($Velocity) { $descriptorName = $null; $descriptorText = 'velocity-plugin.json (generated from @Plugin)' }
+$authorsJava = ''
+if ($Author) { $authorsJava = '"' + $Author.Replace('\', '\\').Replace('"', '\"') + '"' }
 $tokens = @{
     PLUGIN_NAME = $Name; PROJECT_NAME = $projectName; MAIN_CLASS = $mainClass
     PACKAGE = $Package; PACKAGE_PATH = ($Package -replace '\.', '/'); GROUP = $Package
@@ -146,16 +185,24 @@ $tokens = @{
     JAVA = [string]$javaVersion; RUN_PAPER = $runPaper; FOOJAY = $foojay
     MOCKBUKKIT_ARTIFACT = $(if ($mock) { $mock.Artifact } else { '' }); MOCKBUKKIT_VERSION = $(if ($mock) { $mock.Version } else { '' })
     JUNIT = [string]$junit; DESCRIPTOR = $descriptorText
+    VELOCITY = $(if ($Velocity) { $VelocityVersion } else { '' }); RUN_VELOCITY = [string]$runVelocity; VELOCITY_ID = $velocityId
+    DESCRIPTION_JAVA = $Description.Replace('\', '\\').Replace('"', '\"'); AUTHORS_JAVA = $authorsJava
 }
-# Era blocks of the templates (scripts/lib/common.ps1 Get-PaperDevEra).
+# Blocks of the templates: the platform, and for Paper the era (scripts/lib/common.ps1 Get-PaperDevEra).
 $blocks = @()
-if (-not $NoTests) { $blocks += 'TESTS' }
-if ($era.Brigadier) { $blocks += 'BRIGADIER' } else { $blocks += 'LEGACY_COMMANDS' }
-if ($era.MiniMessage) { $blocks += 'MINIMESSAGE' } else { $blocks += 'LEGACY_TEXT' }
-if ($era.ApiVersion) { $blocks += 'API_VERSION' }
+if ($Velocity) { $blocks += 'VELOCITY' }
+else {
+    $blocks += 'PAPER'
+    if (-not $NoTests) { $blocks += 'TESTS' }
+    if ($era.Brigadier) { $blocks += 'BRIGADIER' } else { $blocks += 'LEGACY_COMMANDS' }
+    if ($era.MiniMessage) { $blocks += 'MINIMESSAGE' } else { $blocks += 'LEGACY_TEXT' }
+    if ($era.ApiVersion) { $blocks += 'API_VERSION' }
+    if ($Folia) { $blocks += 'FOLIA' } else { $blocks += 'NO_FOLIA' }
+}
 
 $templateDir = Get-PaperDevTemplateDir
 $projectTemplates = Join-Path $templateDir 'project'
+if ($Velocity) { $projectTemplates = Join-Path $templateDir 'velocity' }
 $plan = New-Object System.Collections.ArrayList
 foreach ($f in (Get-ChildItem -LiteralPath $projectTemplates -Recurse -File)) {
     $rel = $f.FullName.Substring($projectTemplates.Length).TrimStart('\', '/') -replace '\\', '/'
@@ -164,13 +211,18 @@ foreach ($f in (Get-ChildItem -LiteralPath $projectTemplates -Recurse -File)) {
     foreach ($k in $tokens.Keys) { $target = $target.Replace('@@' + $k + '@@', [string]$tokens[$k]) }
     [void]$plan.Add([PSCustomObject]@{ Source = $f.FullName; Target = $target })
 }
-[void]$plan.Add([PSCustomObject]@{ Source = (Join-Path $templateDir ('descriptor/' + $descriptorName)); Target = ('src/main/resources/' + $descriptorName) })
+if ($descriptorName) { [void]$plan.Add([PSCustomObject]@{ Source = (Join-Path $templateDir ('descriptor/' + $descriptorName)); Target = ('src/main/resources/' + $descriptorName) }) }
 $starter = Get-PaperDevStarterFiles -Workflow:$Workflow
 foreach ($k in $starter.Keys) { [void]$plan.Add([PSCustomObject]@{ Source = (Join-Path $templateDir $k); Target = $starter[$k] }) }
 
 Write-Host ('project:   ' + $Path)
-Write-Host ('plugin:    ' + $Name + ' (' + $Package + '.' + $mainClass + ', ' + $descriptorName + ')')
+if ($Velocity) {
+    Write-Host ('plugin:    ' + $Name + ' (id ' + $velocityId + ', ' + $Package + '.' + $mainClass + ', @Plugin)')
+    Write-Host ('target:    Velocity ' + $VelocityVersion + ', Java ' + $javaVersion + ', ' + $apiDependency.Coordinate)
+} else {
+Write-Host ('plugin:    ' + $Name + ' (' + $Package + '.' + $mainClass + ', ' + $descriptorName + $(if ($Folia) { ', folia-supported' } else { '' }) + ')')
 Write-Host ('target:    Paper ' + $Minecraft + ', Java ' + $javaVersion + ', ' + $apiDependency.Coordinate + ', commands: ' + $(if ($era.Brigadier) { 'Brigadier' } else { 'plugin.yml + CommandExecutor' }) + ', text: ' + $(if ($era.MiniMessage) { 'MiniMessage' } else { 'legacy color codes' }))
+}
 foreach ($p in $plan) {
     $state = Write-PaperDevTemplateFile -Source $p.Source -Target (Join-Path $Path $p.Target) -Tokens $tokens -Blocks $blocks -DryRun:$DryRun
     Write-PaperDevStatus $state $p.Target

@@ -6,6 +6,10 @@ authors: [@@AUTHOR_YAML@@]
 @@BEGIN:API_VERSION@@
 api-version: '@@API_VERSION@@'
 @@END:API_VERSION@@
+@@BEGIN:FOLIA@@
+# Loaded by Folia too (folia-supported). Use only the region-aware schedulers: references/paper-api.md
+folia-supported: true
+@@END:FOLIA@@
 @@BEGIN:LEGACY_COMMANDS@@
 
 commands:
