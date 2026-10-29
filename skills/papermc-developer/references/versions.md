@@ -31,6 +31,10 @@
 - **古いサーバーは新しい Java では起動しない。** 1.16.5 以前は Java 8（1.13 以降は 11 まで）、1.17 は Java 17。テストサーバーには、その版に合う JDK が要る（`scripts/doctor.ps1` の `server-java`）。無ければ、作者に確かめてから `scripts/setup.ps1 -Jdk 8` などで Eclipse Temurin を入れる。
 - Gradle 自体は Java 17 以上で動く。古い版のプラグインも、ビルドは Gradle のツールチェーンが Java 8 などの JDK を使う（無ければ foojay-resolver が取ってくる）。
 
+## Spigot と CraftBukkit の版
+
+BuildTools が作れる 1.8 以降（1.7.10 は無い）。依存は `org.spigotmc:spigot-api:<版>-R0.1-SNAPSHOT`（CraftBukkit は 1.15.2 まで `org.bukkit:bukkit`）。Java の範囲は BuildTools が版ごとに決めている（`https://hub.spigotmc.org/versions/<版>.json` の `javaVersions`。クラスファイルの版なので 44 を引くと Java の版）。コマンドとメッセージは、どの版でも `plugin.yml` と `CommandExecutor`、色コード（Brigadier と MiniMessage は Paper だけ）。`references/spigot.md`。
+
 ## Folia と Velocity の版
 
 - Folia のビルドは 1.19.4 以降の一部の版だけ（`scripts/versions.ps1` の `Folia versions`）。`folia-supported: true` はそれより前の Paper では無視されるだけなので、古い版向けのプラグインに書いても害は無いが、Folia で確かめられるのはビルドのある版だけ。

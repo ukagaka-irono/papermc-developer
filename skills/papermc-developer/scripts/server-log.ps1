@@ -33,7 +33,7 @@ $project = Resolve-PaperDevProject $ProjectRoot
 if (-not $project) { Write-PaperDevStatus 'error' 'no Gradle or Maven project found (pass -ProjectRoot)'; exit 1 }
 $serverDir = Get-PaperDevServerDir $project
 if (-not (Test-Path -LiteralPath $serverDir)) { Write-PaperDevStatus 'missing' 'no test server yet (scripts/run-server.ps1)'; exit 3 }
-$logPath = Join-Path $serverDir 'logs/latest.log'
+$logPath = Join-Path (Get-PaperDevSessionLogDir $project (Get-PaperDevSession $project)) 'logs/latest.log'
 if ($project.Kind -eq 'velocity') {
     if ($Backend) { $logPath = Join-Path $serverDir 'backend/logs/latest.log' } else { $logPath = Join-Path $serverDir 'proxy/logs/latest.log' }
 } elseif ($Backend) { Write-PaperDevStatus 'error' '-Backend is for Velocity projects (the Paper server behind the test proxy)'; exit 1 }

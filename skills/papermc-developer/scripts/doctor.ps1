@@ -76,7 +76,9 @@ if ($versions -and $versions.Platform -eq 'velocity') {
         Add-Item 'proxy-java' 'recommended' ([bool]$pj.Count) $d 'Runs the test proxy (scripts/run-server.ps1).' ('Ask the user, then scripts/setup.ps1 -Jdk ' + $velocityJava)
     }
 } elseif ($versions) {
-    $t = 'paper-api ' + $versions.PaperApi
+    $apiName = 'paper-api'
+    if ($versions.Platform -eq 'spigot') { $apiName = 'spigot-api' } elseif ($versions.Platform -eq 'craftbukkit') { $apiName = 'craftbukkit (bukkit / spigot-api)' }
+    $t = $apiName + ' ' + $versions.PaperApi
     if (-not $versions.PaperApi) { $t = 'paper-api not found in the build files' }
     if ($latest -and $versions.Minecraft -and $versions.Minecraft -ne $latest) { $t += ' (latest stable Minecraft: ' + $latest + ')' }
     Add-Item 'target' 'recommended' ([bool]$versions.PaperApi) $t 'The Minecraft version the plugin is compiled against.' 'Add the API dependency for the version (scripts/versions.ps1 -Minecraft <version> prints it; references/layout.md), or see references/workflows/update-paper.md.'
@@ -92,13 +94,28 @@ if ($java) {
 }
 if ($target) {
     $era = Get-PaperDevEra -Minecraft $target -JavaMinimum ([int]$javaNeeded)
-    $range = [string]$era.JavaMin
-    if ($era.JavaMax -ge 99) { $range += '+' } elseif ($era.JavaMax -ne $era.JavaMin) { $range += '-' + $era.JavaMax }
-    $serverJava = Get-PaperDevServerJava -Minecraft $target -JavaMinimum ([int]$javaNeeded)
+    $serverJava = $null
+    if ($versions -and $versions.Platform -in @('spigot', 'craftbukkit') -and -not $Offline) {
+        # Spigot / CraftBukkit: the Java range BuildTools requires for this version.
+        try {
+            $sj = Get-PaperDevSpigotJava $target
+            $era.JavaMin = $sj.JavaMin; $era.JavaMax = $sj.JavaMax; $era.JavaPreferred = $sj.JavaPreferred
+            $pick = @(Find-PaperDevJdks | Where-Object { $_.Major -ge $sj.JavaMin -and $_.Major -le $sj.JavaMax } | Sort-Object { [Math]::Abs($_.Major - $sj.JavaPreferred) })
+            if ($pick.Count) { $serverJava = Get-PaperDevJava $pick[0].Java }
+        } catch { }
+    } else {
+        $serverJava = Get-PaperDevServerJava -Minecraft $target -JavaMinimum ([int]$javaNeeded)
+    }
+    $range = Format-PaperDevJavaRange $era
     $d = 'Minecraft ' + $target + ' runs on Java ' + $range
     if ($versions -and $versions.Platform -eq 'velocity') { $d = 'the test backend (Paper ' + $target + ') runs on Java ' + $range }
     if ($serverJava) { $d += ': ' + $serverJava.Version + ' at ' + $serverJava.Path } else { $d += ': none installed' }
     Add-Item 'server-java' 'recommended' ([bool]$serverJava) $d 'Runs the test server (scripts/run-server.ps1).' ('Ask the user, then scripts/setup.ps1 -Jdk ' + $era.JavaPreferred + ' (downloads Eclipse Temurin ' + $era.JavaPreferred + '), or register an installed JDK with scripts/setup.ps1 -JavaPath <folder>.')
+}
+if ($versions -and $versions.Platform -in @('spigot', 'craftbukkit') -and $target) {
+    # Spigot / CraftBukkit test servers are built once with BuildTools (after the user agreed).
+    $built = Get-PaperDevSpigotServerJar -Minecraft $target -Flavor $versions.Platform
+    Add-Item 'server-jar' 'recommended' ([bool]$built) ($versions.Platform + ' ' + $target + ': ' + $(if ($built) { $built } else { 'not built yet' })) ('The ' + $versions.Platform + ' test server (SpigotMC distributes no server jars).') ('Ask the user (downloads and runs BuildTools; several minutes, about 1 GB), then scripts/setup.ps1 -BuildServer ' + $versions.Platform + ' -Minecraft ' + $target)
 }
 if ($versions -and ($versions.FoliaSupported -or $versions.Platform -eq 'folia') -and $target -and -not $Offline) {
     $foliaOk = $false

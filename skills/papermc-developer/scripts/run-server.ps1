@@ -7,13 +7,16 @@
   uses a flat world, and keeps its world between runs. The script:
   1. builds the jar (gradlew assemble / mvn package -DskipTests) unless -NoBuild,
   2. stops the test server if it runs (RCON "stop": the world is saved, onDisable runs),
-  3. gets the Paper (or Folia) server jar of the project's Minecraft version (cached, SHA-256 checked),
+  3. gets the server jar of the project's Minecraft version: Paper or Folia (Fill API, cached, SHA-256 checked),
+     Spigot or CraftBukkit (built earlier with BuildTools by scripts/setup.ps1 -BuildServer, after the user agreed),
   4. copies the plugin jar (and -ExtraPlugin jars) into plugins/, replacing the previous copy,
   5. starts the server and waits for "Done", then reports whether the plugin was enabled and the
      errors and the warnings about the plugin in logs/latest.log.
   Needs the user's agreement to the Minecraft EULA, recorded by scripts/setup.ps1 -AcceptEula.
   Afterwards: scripts/rcon.ps1 sends commands, scripts/server-log.ps1 reads the log.
   The user can join with their own client at the printed address (localhost:<port>).
+  -Platform   paper / folia / spigot / craftbukkit (default: what the project targets). A Paper plugin can be tried on
+              Spigot to see whether it also runs there; Folia needs folia-supported: true.
   -Stop       stops the test server     -Status   shows whether it runs
   -Fresh      deletes the test world before starting (the plugin's data in plugins/<name>/ is kept)
   -JdwpPort   opens a Java debugger port (attach the IDE: Remote JVM Debug, 127.0.0.1:<port>)
@@ -33,7 +36,7 @@ param(
     [switch]$NoBuild,
     [switch]$Fresh,
     [string]$Minecraft,
-    [ValidateSet('', 'paper', 'folia')][string]$Platform = '',
+    [ValidateSet('', 'paper', 'folia', 'spigot', 'craftbukkit')][string]$Platform = '',
     [string]$Memory = '2G',
     [string[]]$ExtraPlugin = @(),
     [int]$JdwpPort = 0,
@@ -83,30 +86,48 @@ $versions = Get-PaperDevProjectVersions $project
 # (PowerShell names are case-insensitive: $platform below is the -Platform parameter itself.)
 if (-not $Platform) {
     $Platform = 'paper'
-    if ($versions.Platform -eq 'folia') { $Platform = 'folia' }
+    if ($versions.Platform -in @('folia', 'spigot', 'craftbukkit')) { $Platform = $versions.Platform }
 }
 $platform = $Platform
+$isBukkit = $platform -in @('spigot', 'craftbukkit')
 if ($platform -eq 'folia' -and -not $versions.FoliaSupported) {
     Write-PaperDevStatus 'error' 'Folia loads only plugins with "folia-supported: true" in plugin.yml / paper-plugin.yml (references/paper-api.md, Folia)'
     exit 1
 }
 $mc = $Minecraft
 if (-not $mc) { $mc = $versions.Minecraft }
+$spigotJava = $null
 try {
-    if (-not $mc) { $mc = Get-PaperDevLatestMinecraft -Project $platform; Write-PaperDevStatus 'note' ('no Minecraft version in the build files; using the latest stable ' + $mc) }
-    if ($platform -eq 'folia' -and (Get-PaperDevMinecraftVersions 'folia') -notcontains $mc) {
-        Write-PaperDevStatus 'missing' ('Folia has no build for ' + $mc + ' (Folia versions: ' + ((Get-PaperDevMinecraftVersions 'folia') -join ', ') + '); pass -Minecraft <version>')
-        exit 3
+    if ($isBukkit) {
+        # Spigot / CraftBukkit: the versions BuildTools can build, and the Java range it requires for one.
+        $spigotVersions = Get-PaperDevSpigotVersions
+        if (-not $mc) { $mc = $spigotVersions[0] }
+        if ($spigotVersions -notcontains $mc) { Write-PaperDevStatus 'missing' ('BuildTools cannot build ' + $platform + ' ' + $mc + ' (1.8 and later); pass -Minecraft <version>'); exit 3 }
+        $spigotJava = Get-PaperDevSpigotJava $mc
+        $javaNeeded = $spigotJava.JavaMin
+    } else {
+        if (-not $mc) { $mc = Get-PaperDevLatestMinecraft -Project $platform; Write-PaperDevStatus 'note' ('no Minecraft version in the build files; using the latest stable ' + $mc) }
+        if ($platform -eq 'folia' -and (Get-PaperDevMinecraftVersions 'folia') -notcontains $mc) {
+            Write-PaperDevStatus 'missing' ('Folia has no build for ' + $mc + ' (Folia versions: ' + ((Get-PaperDevMinecraftVersions 'folia') -join ', ') + '); pass -Minecraft <version>')
+            exit 3
+        }
+        $javaNeeded = (Get-PaperDevVersionInfo -Minecraft $mc -Project $platform).JavaMinimum
     }
-    $javaNeeded = (Get-PaperDevVersionInfo -Minecraft $mc -Project $platform).JavaMinimum
 } catch { Write-PaperDevStatus 'error' ('cannot look up ' + $platform + ' ' + $mc + ': ' + $_.Exception.Message); exit 3 }
 
 # Two javas: one that runs Gradle (17+), and the one the server of this version runs on (old servers do not
 # start on new Java: 1.16.5 and earlier need Java 8 to 11, see Get-PaperDevEra).
 $era = Get-PaperDevEra -Minecraft $mc -JavaMinimum ([int]$javaNeeded)
+if ($spigotJava) { $era.JavaMin = $spigotJava.JavaMin; $era.JavaMax = $spigotJava.JavaMax; $era.JavaPreferred = $spigotJava.JavaPreferred }
 $java = Get-PaperDevJava
 if (-not $java) { Write-PaperDevStatus 'missing' 'java not found (scripts/doctor.ps1)'; exit 3 }
-$serverJava = Get-PaperDevServerJava -Minecraft $mc -JavaMinimum ([int]$javaNeeded) -JavaPath $JavaPath
+if ($spigotJava -and -not $JavaPath) {
+    $pick = @(Find-PaperDevJdks | Where-Object { $_.Major -ge $era.JavaMin -and $_.Major -le $era.JavaMax } | Sort-Object { [Math]::Abs($_.Major - $era.JavaPreferred) })
+    $serverJava = $null
+    if ($pick.Count) { $serverJava = Get-PaperDevJava $pick[0].Java }
+} else {
+    $serverJava = Get-PaperDevServerJava -Minecraft $mc -JavaMinimum ([int]$javaNeeded) -JavaPath $JavaPath
+}
 if (-not $serverJava) {
     $range = [string]$era.JavaMin
     if ($era.JavaMax -ge 99) { $range += '+' } elseif ($era.JavaMax -ne $era.JavaMin) { $range += '-' + $era.JavaMax }
@@ -144,8 +165,20 @@ if ($running) {
 }
 
 # 3. server jar
-try { $server = Get-PaperDevServerJar -Minecraft $mc -Project $platform }
-catch { Write-PaperDevStatus 'error' ('cannot get the ' + $platform + ' server jar: ' + $_.Exception.Message); exit 3 }
+if ($isBukkit) {
+    # SpigotMC distributes no server jars: they are built once with BuildTools (setup.ps1 -BuildServer), after the user agreed.
+    $built = Get-PaperDevSpigotServerJar -Minecraft $mc -Flavor $platform
+    if (-not $built) {
+        Write-PaperDevStatus 'missing' ('no ' + $platform + ' ' + $mc + ' server jar yet: SpigotMC does not distribute them, it has to be built with BuildTools')
+        Write-Host ('          Ask the user first (downloads BuildTools and the Minecraft server, runs it; several minutes, about 1 GB), then:')
+        Write-Host ('          scripts/setup.ps1 -BuildServer ' + $platform + ' -Minecraft ' + $mc)
+        exit 3
+    }
+    $server = [PSCustomObject]@{ Path = $built; Build = [PSCustomObject]@{ Build = 'BuildTools' } }
+} else {
+    try { $server = Get-PaperDevServerJar -Minecraft $mc -Project $platform }
+    catch { Write-PaperDevStatus 'error' ('cannot get the ' + $platform + ' server jar: ' + $_.Exception.Message); exit 3 }
+}
 
 # 4. folder, properties, plugins
 $port = 0; $rconPort = 0; $password = $null
@@ -154,6 +187,8 @@ if ($port -le 0 -or -not (Test-PaperDevPortFree $port)) { $port = Find-PaperDevF
 if ($rconPort -le 0 -or -not (Test-PaperDevPortFree $rconPort)) { $rconPort = Find-PaperDevFreePort 25576 25599 @($port) }
 if ($port -le 0 -or $rconPort -le 0) { Write-PaperDevStatus 'error' 'no free port in 25566-25599'; exit 1 }
 if (-not $password) { $password = New-PaperDevPassword }
+# Each server type keeps its own folder and world: a world written by one (e.g. Folia) may not load on another.
+$serverDir = Get-PaperDevPlatformDir -Project $project -Platform $platform
 Initialize-PaperDevPaperFolder -Directory $serverDir -Minecraft $mc -Era $era -Port $port -RconPort $rconPort -Password $password -Motd ('papermc-developer test server: ' + $pluginName) -Fresh:$Fresh
 
 $pluginsDir = Join-Path $serverDir 'plugins'
@@ -183,7 +218,7 @@ $proc = Start-PaperDevServerProcess -Directory $serverDir -Java $serverJava.Path
 $session = [PSCustomObject]@{
     pid = $proc.Id; port = $port; rconPort = $rconPort; rconPassword = $password; platform = $platform; minecraft = $mc
     build = $server.Build.Build; pluginName = $pluginName; package = $package; deployed = $newDeployed
-    startedAt = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK'); jdwpPort = $JdwpPort; project = $project.Root
+    startedAt = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK'); jdwpPort = $JdwpPort; project = $project.Root; serverDir = $serverDir
 }
 Save-PaperDevSession $project $session
 Write-Host ('starting ' + $platform + ' ' + $mc + ' build ' + $server.Build.Build + ' (pid ' + $proc.Id + ', java ' + $serverJava.Version + '); the first start takes longer')

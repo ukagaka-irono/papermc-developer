@@ -34,7 +34,9 @@ try {
     Step '-PaperPlugin refused before 1.20.6' 'new-plugin.ps1' @('-Name', 'E2eNo', '-Minecraft', '1.16.5', '-PaperPlugin', '-Path', (Join-Path $work 'no'), '-DryRun') @(1)
     Step 'new Folia project' 'new-plugin.ps1' @('-Name', 'E2eFolia', '-Folia', '-NoTests', '-Path', (Join-Path $work 'folia'))
     Step 'new Velocity project' 'new-plugin.ps1' @('-Name', 'E2eProxy', '-Velocity', '-Path', (Join-Path $work 'proxy'))
-    foreach ($p in @('bukkit', 'paper', 'old', 'folia', 'proxy')) {
+    Step 'new Spigot project' 'new-plugin.ps1' @('-Name', 'E2eSpigot', '-Spigot', '-Path', (Join-Path $work 'spigot'))
+    Step 'new CraftBukkit 1.12.2 project' 'new-plugin.ps1' @('-Name', 'E2eCb', '-CraftBukkit', '-Minecraft', '1.12.2', '-Path', (Join-Path $work 'cb'))
+    foreach ($p in @('bukkit', 'paper', 'old', 'folia', 'proxy', 'spigot', 'cb')) {
         $root = Join-Path $work $p
         Step ('doctor ' + $p) 'doctor.ps1' @('-ProjectRoot', $root)
         Step ('check ' + $p) 'check.ps1' @('-ProjectRoot', $root)

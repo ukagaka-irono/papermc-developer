@@ -10,6 +10,10 @@
                 downloads Eclipse Temurin n (about 100-200 MB) into the home folder. Ask the user before downloading.
   -Minecraft    downloads the Paper server jar of that version (default: the project's version, else the latest stable).
   -Gradle       downloads the current Gradle distribution (used to create the wrapper of new projects).
+  -BuildServer spigot|craftbukkit  builds that server jar of -Minecraft (default: the project's version) with SpigotMC's
+                BuildTools, the only way to get one. It downloads BuildTools.jar and runs it; BuildTools downloads the
+                Minecraft server, SpigotMC's Git repositories and Maven and compiles them (several minutes, about 1 GB
+                in <home>/cache/buildtools). Pass it only after the user agreed. The jar goes to <home>/cache/spigot/.
   Without switches it downloads the server jar for the project and shows the doctor result.
   Everything goes to the home folder (%LOCALAPPDATA%\papermc-developer, or PAPERMCDEV_HOME), never into the project.
   Exit codes: 0 / 1 failed or a required item is missing.
@@ -25,12 +29,37 @@ param(
     [int[]]$Jdk = @(),
     [string]$Minecraft,
     [switch]$Gradle,
+    [ValidateSet('', 'spigot', 'craftbukkit')][string]$BuildServer = '',
     [switch]$NoDownload
 )
 . (Join-Path $PSScriptRoot 'lib/common.ps1')
 Initialize-PaperDevConsole
 
 $failed = $false
+
+if ($BuildServer) {
+    $mc = $Minecraft
+    if (-not $mc) { $p = Resolve-PaperDevProject $ProjectRoot; if ($p) { $mc = (Get-PaperDevProjectVersions $p).Minecraft } }
+    try {
+        $spigotVersions = Get-PaperDevSpigotVersions
+        if (-not $mc) { $mc = $spigotVersions[0] }
+        if ($spigotVersions -notcontains $mc) { Write-PaperDevStatus 'error' ('BuildTools cannot build ' + $mc + ' (1.8 and later)'); exit 1 }
+        $existing = Get-PaperDevSpigotServerJar -Minecraft $mc -Flavor $BuildServer
+        if ($existing) { Write-PaperDevStatus 'ok' ($BuildServer + ' ' + $mc + ' is already built: ' + $existing); exit 0 }
+        $range = Get-PaperDevSpigotJava $mc
+        $pick = @(Find-PaperDevJdks | Where-Object { $_.Major -ge $range.JavaMin -and $_.Major -le $range.JavaMax } | Sort-Object { [Math]::Abs($_.Major - $range.JavaPreferred) })
+        if (-not $pick.Count) {
+            Write-PaperDevStatus 'missing' ('BuildTools needs Java ' + $range.JavaMin + '-' + $range.JavaMax + ' to build ' + $mc + '; none is installed (ask the user, then scripts/setup.ps1 -Jdk ' + $range.JavaPreferred + ')')
+            exit 1
+        }
+        $built = Invoke-PaperDevBuildTools -Minecraft $mc -Flavor $BuildServer -Java $pick[0].Java
+        Write-PaperDevStatus 'ok' ('built ' + $BuildServer + ' ' + $mc + ' with Java ' + $pick[0].Major + ': ' + $built)
+        exit 0
+    } catch {
+        Write-PaperDevStatus 'error' $_.Exception.Message
+        exit 1
+    }
+}
 
 if ($AcceptEula) {
     Set-PaperDevLocalConfig 'eulaAccepted' $true

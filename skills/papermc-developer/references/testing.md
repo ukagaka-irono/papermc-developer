@@ -21,6 +21,8 @@
 - MockBukkit が実装していない API を呼ぶと `UnimplementedOperationException` になる。その部分はテストを分けるか、テストサーバーで確かめる。
 - テストは、作者が書いた仕様（`PLUGIN.md` の「動作確認」）を確かめるものにする。実装をなぞっただけのテストを数で増やさない。
 
+**Spigot / CraftBukkit 向けのプロジェクト**は、テスト無しで作られる（テンプレートの MockBukkit のテストは Paper の API で書かれているため）。BuildTools で作ったテストサーバーで確かめる（`references/spigot.md`）。
+
 **Velocity のプラグイン**には MockBukkit にあたるものが無い。ロジックは Velocity の型に頼らないクラスに分け、普通の JUnit のテストを書く（JUnit を足すのは作者に確かめてから）。プロキシの上での動きは、テストのプロキシで確かめる（`references/velocity.md`）。
 
 ## 2. テストサーバー

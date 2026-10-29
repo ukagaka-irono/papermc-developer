@@ -34,8 +34,15 @@ if (-not $java) { $java = 21 }
 $descriptorText = 'plugin.yml (Bukkit)'
 if ($project.Kind -eq 'paper') { $descriptorText = 'paper-plugin.yml (Paper plugin)' }
 $target = [string]$v.Minecraft
-$blocks = @('PAPER')
+$blocks = @('BUKKIT')
+switch ($v.Platform) {
+    'spigot' { $blocks += 'SERVER_SPIGOT' }
+    'craftbukkit' { $blocks += 'SERVER_CRAFTBUKKIT' }
+    default { $blocks += 'SERVER_PAPER' }
+}
 if ($v.FoliaSupported -or $v.Platform -eq 'folia') { $blocks += 'FOLIA' } else { $blocks += 'NO_FOLIA' }
+# Message format in PLUGIN.md: MiniMessage where the API has it (Paper 1.18.2+), else "&" color codes.
+if ($v.Platform -notin @('spigot', 'craftbukkit') -and $v.Minecraft -and (Test-PaperDevVersionAtLeast $v.Minecraft '1.18.2')) { $blocks += 'MINIMESSAGE' } else { $blocks += 'LEGACY_TEXT' }
 if ($project.Kind -eq 'velocity') {
     $descriptorText = 'velocity-plugin.json (generated from @Plugin)'
     $target = [string]$v.Velocity

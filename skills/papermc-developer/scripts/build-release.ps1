@@ -74,7 +74,7 @@ try {
         if (-not $version -or $version -match '\$\{') { Write-PaperDevStatus 'error' ('the version in ' + $descName + ' was not filled in: "' + $version + '" (processResources expand, references/layout.md)'); $problems++ }
         if ($main -and ($names -notcontains (($main -replace '\.', '/') + '.class'))) { Write-PaperDevStatus 'error' ('main class ' + $main + ' is not in the jar'); $problems++ }
     }
-    $apiPrefixes = @('org/bukkit/', 'io/papermc/paper/', 'net/kyori/adventure/', 'com/mojang/brigadier/', 'net/minecraft/', 'com/velocitypowered/', 'com/google/inject/')
+    $apiPrefixes = @('org/bukkit/', 'io/papermc/paper/', 'net/kyori/adventure/', 'com/mojang/brigadier/', 'net/minecraft/', 'com/velocitypowered/', 'com/google/inject/', 'net/md_5/bungee/')
     foreach ($p in $apiPrefixes) {
         $hits = @($names | Where-Object { $_.StartsWith($p) -and $_.EndsWith('.class') })
         if ($hits.Count -gt 0) { Write-PaperDevStatus 'error' ($hits.Count.ToString() + ' class(es) under ' + $p + ' are inside the jar: the server provides them; use compileOnly, not implementation'); $problems++ }

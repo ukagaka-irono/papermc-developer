@@ -13,6 +13,9 @@ $PaperDevMavenPaper = 'https://repo.papermc.io/repository/maven-public'
 $PaperDevMavenCentral = 'https://repo1.maven.org/maven2'
 $PaperDevPluginPortal = 'https://plugins.gradle.org/m2'
 $PaperDevEulaUrl = 'https://aka.ms/MinecraftEULA'
+$PaperDevMavenSpigot = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots'
+$PaperDevSpigotVersions = 'https://hub.spigotmc.org/versions'
+$PaperDevBuildToolsUrl = 'https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar'
 
 function Initialize-PaperDevConsole {
     try {
@@ -376,13 +379,95 @@ function Format-PaperDevJavaRange {
 
 function Get-PaperDevApiDependency {
     # The API to compile against, as the Paper docs and repository name it for each era.
-    param([string]$Minecraft)
+    # Spigot: org.spigotmc:spigot-api. CraftBukkit: org.bukkit:bukkit while it was published (up to 1.15.2),
+    # later spigot-api (the Bukkit API plus Spigot's extras, which a CraftBukkit plugin must not use).
+    param([string]$Minecraft, [string]$Platform = 'paper')
     $v = ConvertTo-PaperDevVersion $Minecraft
+    if ($Platform -eq 'spigot' -or ($Platform -eq 'craftbukkit' -and $v -gt [version]'1.15.2')) {
+        return [PSCustomObject]@{ Group = 'org.spigotmc'; Artifact = 'spigot-api'; Version = ($Minecraft + '-R0.1-SNAPSHOT'); Coordinate = ('org.spigotmc:spigot-api:' + $Minecraft + '-R0.1-SNAPSHOT'); Repository = $PaperDevMavenSpigot }
+    }
+    if ($Platform -eq 'craftbukkit') {
+        return [PSCustomObject]@{ Group = 'org.bukkit'; Artifact = 'bukkit'; Version = ($Minecraft + '-R0.1-SNAPSHOT'); Coordinate = ('org.bukkit:bukkit:' + $Minecraft + '-R0.1-SNAPSHOT'); Repository = $PaperDevMavenSpigot }
+    }
     if ($v -ge [version]'26.0.0') { $g = 'io.papermc.paper'; $a = 'paper-api'; $ver = $Minecraft + '.build.+' }
     elseif ($v -ge [version]'1.17.0') { $g = 'io.papermc.paper'; $a = 'paper-api'; $ver = $Minecraft + '-R0.1-SNAPSHOT' }
     elseif ($v -ge [version]'1.9.0') { $g = 'com.destroystokyo.paper'; $a = 'paper-api'; $ver = $Minecraft + '-R0.1-SNAPSHOT' }
     else { $g = 'org.github.paperspigot'; $a = 'paperspigot-api'; $ver = $Minecraft + '-R0.1-SNAPSHOT' }
-    return [PSCustomObject]@{ Group = $g; Artifact = $a; Version = $ver; Coordinate = ($g + ':' + $a + ':' + $ver) }
+    return [PSCustomObject]@{ Group = $g; Artifact = $a; Version = $ver; Coordinate = ($g + ':' + $a + ':' + $ver); Repository = $PaperDevMavenPaper }
+}
+
+# ---------------------------------------------------------------- Spigot / CraftBukkit (BuildTools)
+
+function Get-PaperDevSpigotVersions {
+    # Versions BuildTools can build (hub.spigotmc.org/versions/<version>.json), newest first. 1.8 and later.
+    $index = Get-PaperDevTextFromWeb ($PaperDevSpigotVersions + '/')
+    $names = @([regex]::Matches($index, 'href="(\d+(?:\.\d+)+)\.json"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    return @($names | Sort-Object { ConvertTo-PaperDevVersion $_ } -Descending)
+}
+
+function Get-PaperDevSpigotJava {
+    # The Java range BuildTools requires for a version (javaVersions in <version>.json are class file versions,
+    # major = n - 44). Versions without it build on Java 7-8; this skill uses 8.
+    param([string]$Minecraft)
+    $info = Get-PaperDevJson ($PaperDevSpigotVersions + '/' + $Minecraft + '.json')
+    $min = 8; $max = 8
+    if ($info.PSObject.Properties['javaVersions'] -and @($info.javaVersions).Count -eq 2) {
+        $min = [int]@($info.javaVersions)[0] - 44
+        $max = [int]@($info.javaVersions)[1] - 44
+        if ($min -lt 8) { $min = 8 }
+    }
+    $preferred = $min
+    foreach ($lts in @(8, 11, 17, 21, 25)) { if ($lts -ge $min -and $lts -le $max) { $preferred = $lts; break } }
+    return [PSCustomObject]@{ JavaMin = $min; JavaMax = $max; JavaPreferred = $preferred }
+}
+
+function Get-PaperDevSpigotServerJar {
+    # A Spigot / CraftBukkit server jar built earlier by BuildTools (Invoke-PaperDevBuildTools), or $null.
+    param([string]$Minecraft, [ValidateSet('spigot', 'craftbukkit')][string]$Flavor)
+    $path = Join-Path (Get-PaperDevHomeDir 'cache') ('spigot/' + $Flavor + '-' + $Minecraft + '.jar')
+    if (Test-Path -LiteralPath $path) { return $path }
+    return $null
+}
+
+function Invoke-PaperDevBuildTools {
+    # Builds a Spigot or CraftBukkit server jar with SpigotMC's BuildTools (the only way to get one: SpigotMC does
+    # not distribute server jars). Downloads BuildTools.jar, then BuildTools downloads the Minecraft server, Git
+    # repositories and Maven, and compiles (several minutes, about 1 GB in <home>/bt/). Run only after the user
+    # agreed. Returns the jar path; throws on failure (the end of the BuildTools log is in the message).
+    param([string]$Minecraft, [ValidateSet('spigot', 'craftbukkit')][string]$Flavor, [string]$Java)
+    $toolsDir = Get-PaperDevHomeDir 'cache/buildtools'
+    # A short work folder: Spigot's sources are nested deeply, and Windows paths are limited to 260 characters.
+    $work = Get-PaperDevHomeDir 'bt'
+    $jar = Join-Path $toolsDir 'BuildTools.jar'
+    Write-Host ('downloading BuildTools.jar from hub.spigotmc.org')
+    Save-PaperDevDownload -Uri $PaperDevBuildToolsUrl -OutFile $jar
+    $outDir = Join-Path (Get-PaperDevHomeDir 'cache') 'spigot'
+    New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+    Write-Host ('building ' + $Flavor + ' ' + $Minecraft + ' with BuildTools (several minutes; log: ' + (Join-Path $work 'BuildTools.log.txt') + ')')
+    $javaHome = Split-Path -Parent (Split-Path -Parent $Java)
+    $envs = @{ 'JAVA_HOME' = $javaHome }
+    if (Test-PaperDevWindows) {
+        # BuildTools checks for "sh" first and otherwise downloads and unpacks PortableGit (which can fail).
+        # Git for Windows puts only its cmd\ folder on PATH; sh.exe is in bin\ and usr\bin\.
+        $git = Get-Command git -ErrorAction SilentlyContinue | Select-Object -First 1
+        $gitRoot = $null
+        if ($git) { $gitRoot = Split-Path -Parent (Split-Path -Parent $git.Source) }
+        if (-not $gitRoot -or -not (Test-Path -LiteralPath (Join-Path $gitRoot 'bin\sh.exe'))) {
+            throw 'BuildTools needs Git for Windows (its sh.exe): install it (winget install --id Git.Git -e), then try again'
+        }
+        $envs['PATH'] = (Join-Path $gitRoot 'bin') + ';' + (Join-Path $gitRoot 'usr\bin') + ';' + $env:PATH
+        # core.longpaths for these git runs only (environment config, Git 2.31+): the user's git config is not changed.
+        $envs['GIT_CONFIG_COUNT'] = '1'
+        $envs['GIT_CONFIG_KEY_0'] = 'core.longpaths'
+        $envs['GIT_CONFIG_VALUE_0'] = 'true'
+    }
+    $r = Invoke-PaperDevDetachedProcess -FilePath $Java -Arguments @('-jar', $jar, '--nogui', '--rev', $Minecraft, '--compile', $Flavor, '--output-dir', $outDir) -WorkingDirectory $work -Environment $envs
+    $built = Join-Path $outDir ($Flavor + '-' + $Minecraft + '.jar')
+    if ($r.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $built)) {
+        $tail = (($r.StdOut -split "`r?`n") | Where-Object { $_ } | Select-Object -Last 25) -join "`n"
+        throw ('BuildTools failed (exit ' + $r.ExitCode + '):' + "`n" + $tail)
+    }
+    return $built
 }
 
 function Get-PaperDevApiCoordinate {
@@ -405,8 +490,12 @@ function Get-PaperDevApiVersionField {
 function Get-PaperDevLatestApiBuild {
     # Newest concrete API version for a Minecraft version (e.g. 26.3.build.229-stable, 1.8.8-R0.1-SNAPSHOT).
     # $null when the repository does not have it.
-    param([string]$Minecraft)
-    $dep = Get-PaperDevApiDependency $Minecraft
+    param([string]$Minecraft, [string]$Platform = 'paper')
+    $dep = Get-PaperDevApiDependency -Minecraft $Minecraft -Platform $Platform
+    if ($dep.Repository -ne $PaperDevMavenPaper) {
+        $url = $dep.Repository + '/' + ($dep.Group -replace '\.', '/') + '/' + $dep.Artifact + '/' + $dep.Version + '/maven-metadata.xml'
+        try { Invoke-PaperDevWeb $url | Out-Null; return $dep.Version } catch { return $null }
+    }
     if (Test-PaperDevModernVersion $Minecraft) {
         $versions = Get-PaperDevMavenVersions -Repository $PaperDevMavenPaper -Group $dep.Group -Artifact $dep.Artifact
         $prefix = $Minecraft + '.build.'
@@ -723,6 +812,13 @@ function Get-PaperDevProjectVersions {
         if (-not $result.MockBukkit -and $text -match 'org\.mockbukkit\.mockbukkit:(mockbukkit-v[0-9.]+):([^"''\s]+)') { $result.MockBukkit = $Matches[1] + ':' + $Matches[2] }
     }
     if ($result.Platform -eq 'velocity') { $result.RunPaper = $null; return $result }
+    # Spigot / CraftBukkit projects compile against spigot-api / bukkit instead of paper-api. A CraftBukkit project
+    # after 1.15.2 also uses spigot-api; new-plugin.ps1 marks it with "papermc-developer: platform=craftbukkit".
+    $all = (Get-PaperDevBuildFiles $Project | ForEach-Object { Read-PaperDevText $_ }) -join "`n"
+    if ($result.Platform -eq 'paper' -and $all -notmatch '(io\.papermc\.paper|com\.destroystokyo\.paper|org\.github\.paperspigot)[:"''<]|<artifactId>(paper|paperspigot)-api<') {
+        if ($all -match 'papermc-developer: platform=craftbukkit' -or $all -match 'org\.bukkit:bukkit:|<artifactId>bukkit</artifactId>') { $result.Platform = 'craftbukkit' }
+        elseif ($all -match 'org\.spigotmc:spigot-api:|<artifactId>spigot-api</artifactId>') { $result.Platform = 'spigot' }
+    }
     if ($result.PaperApi -and $result.PaperApi -match '^(\d+\.\d+(?:\.\d+)?)(?:\.build|-R0\.1)') { $result.Minecraft = $Matches[1] }
     elseif ($result.RunPaper) { $result.Minecraft = $result.RunPaper }
     return $result
@@ -1115,6 +1211,11 @@ function Test-PaperDevEntryAboutPlugin {
     if ($PluginName -and $Entry.Source -eq $PluginName) { return $true }
     $text = $Entry.Lines -join "`n"
     if ($PluginName -and $text -match ('(?i)\b' + [regex]::Escape($PluginName) + '\b')) { return $true }
+    # Load errors name the jar, which the build calls after the project ("FoliaTest" -> "folia-test-0.1.0.jar").
+    if ($PluginName) {
+        $kebab = ($PluginName -creplace '([a-z0-9])([A-Z])', '$1-$2').ToLowerInvariant()
+        if ($text -match ('(?i)[\\/]' + [regex]::Escape($kebab) + '-[0-9][^\\/'']*\.jar')) { return $true }
+    }
     if ($Package -and $text.Contains($Package + '.')) { return $true }
     return $false
 }

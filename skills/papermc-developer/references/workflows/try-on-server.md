@@ -15,6 +15,7 @@
 ## Folia と Velocity
 
 - **Folia**: `folia-supported: true` のプラグインは、`scripts/run-server.ps1 -Platform folia` で Folia のサーバーでも試す（プロジェクトの版に Folia のビルドが無ければ `-Minecraft <版>`。`scripts/versions.ps1` の `Folia versions`）。Paper のサーバーでの確認（ふだんの `run-server.ps1`）と両方を行う。
+- **Spigot / CraftBukkit**: そのサーバーの jar は BuildTools で作る（SpigotMC は配布していない）。`run-server.ps1` が終了コード 3 で「まだ無い」と言ったら、作者に確かめてから `scripts/setup.ps1 -BuildServer spigot -Minecraft <版>`（`references/spigot.md` の「テストサーバー」）。Paper 向けのプラグインが Spigot でも動くかを見るのも `-Platform spigot`。
 - **Velocity**: Velocity のプロジェクトでは、`scripts/run-server.ps1` がテスト用の Velocity プロキシと、その後ろの Paper サーバーを立てる（`scripts/run-proxy.ps1`）。コマンドはプロキシのコンソールに送られ（`scripts/rcon.ps1 "hello"`）、返事はログに出る。後ろのサーバーには `-Backend`。作者が入るのはプロキシのポート。詳しくは `references/velocity.md` の「テストのプロキシで確かめる」。
 
 ## 手順
