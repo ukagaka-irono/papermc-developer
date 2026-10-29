@@ -1,8 +1,16 @@
 name: check
 
+# Branches: main (released), develop (next release), <topic>-fix (one change each).
 on:
   push:
+    branches:
+      - main
+      - develop
+      - '*-fix'
   pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
   build:
