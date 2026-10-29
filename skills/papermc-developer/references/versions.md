@@ -31,6 +31,11 @@
 - **古いサーバーは新しい Java では起動しない。** 1.16.5 以前は Java 8（1.13 以降は 11 まで）、1.17 は Java 17。テストサーバーには、その版に合う JDK が要る（`scripts/doctor.ps1` の `server-java`）。無ければ、作者に確かめてから `scripts/setup.ps1 -Jdk 8` などで Eclipse Temurin を入れる。
 - Gradle 自体は Java 17 以上で動く。古い版のプラグインも、ビルドは Gradle のツールチェーンが Java 8 などの JDK を使う（無ければ foojay-resolver が取ってくる）。
 
+## Folia と Velocity の版
+
+- Folia のビルドは 1.19.4 以降の一部の版だけ（`scripts/versions.ps1` の `Folia versions`）。`folia-supported: true` はそれより前の Paper では無視されるだけなので、古い版向けのプラグインに書いても害は無いが、Folia で確かめられるのはビルドのある版だけ。
+- Velocity は Minecraft の版とは別の版を持つ（3.x は Java 21、4.x は Java 25）。1 つの Velocity が、古い版から新しい版までのクライアントとサーバーをつなぐ。プラグインは、作者が使う Velocity の版の `velocity-api` でビルドする（`references/velocity.md`）。
+
 ## 古い版で書くときの注意
 
 - **使える API は、その版の Javadoc で確かめる。** 新しい版のメソッドを書くとコンパイルで落ちる（`scripts/check.ps1`）。PaperMC のドキュメントは最新の版のもので、古い版には無いものが多い。古い版の Javadoc は `https://jd.papermc.io/paper/<1.マイナー>/`（例: `https://jd.papermc.io/paper/1.16/`、`https://jd.papermc.io/paper/1.12/`、`https://jd.papermc.io/paper/1.8/`）。1.7.10 は PaperMC に無いので、第三者が置いた Bukkit の Javadoc（`https://helpch.at/docs/1.7.10/`）を参考にし、最後はコンパイルで確かめる。

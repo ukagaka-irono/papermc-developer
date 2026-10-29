@@ -32,14 +32,18 @@
 
 ## Folia
 
-Folia はワールドを地域（リージョン）に分けて、別々のスレッドで動かす。対応するには:
+Folia（https://papermc.io/software/folia ）は、ワールドを地域（リージョン）に分けて、別々のスレッドで同時に動かす Paper。プレイヤーの多い大きなサーバー向けで、メインスレッドが無い。Folia のビルドがあるのは 1.19.4 以降の一部の版（`scripts/versions.ps1` の `Folia versions`）。Folia のビルドは実験的（Fill API の channel が ALPHA などのことがある）。対応するには:
 
-1. `plugin.yml`（または `paper-plugin.yml`）に `folia-supported: true` を書く。書かないと Folia はプラグインを読み込まない。
-2. `BukkitScheduler`（`getScheduler()`）を使わない。代わりに、場所に結びつく処理は `getRegionScheduler()`、エンティティに結びつく処理は `entity.getScheduler()`、どこにも結びつかない処理は `getGlobalRegionScheduler()`、非同期は `getAsyncScheduler()`。これらは Paper でも動くので、両対応のプラグインはこちらに統一する。
-3. あるリージョンのスレッドから、別のリージョンのブロックやエンティティを触らない。
-4. 対応したかの確認は、Folia のサーバーで行う（`folia-api` を依存にしたプロジェクトなら、`run-server.ps1` は Folia を立てる）。
+1. `plugin.yml`（または `paper-plugin.yml`）に `folia-supported: true` を書く。書かないと Folia はプラグインを読み込まない。新しく作るなら `scripts/new-plugin.ps1 -Folia`。
+2. 依存は paper-api のままでよい（Folia 用の API は paper-api に入っている。`folia-api` にする必要はない）。こうすると、1 つの jar が Paper でも Folia でも動く。
+3. `BukkitScheduler`（`getServer().getScheduler()`、`Bukkit.getScheduler()`、`BukkitRunnable`）を使わない（Folia では `UnsupportedOperationException`）。代わりに、場所に結びつく処理は `getServer().getRegionScheduler()`、エンティティ（プレイヤーを含む）に結びつく処理は `entity.getScheduler()`、どこにも結びつかない処理は `getServer().getGlobalRegionScheduler()`、非同期は `getServer().getAsyncScheduler()`。これらは Paper でも動く（Paper では今までどおりメインスレッドで動く）ので、両対応のプラグインはこちらに統一する。`scripts/check.ps1` は、`folia-supported: true` のプラグインで BukkitScheduler を見つけると error にする。
+4. **あるリージョンのスレッドから、別のリージョンのブロックやエンティティを触らない。** イベントは、そのイベントの場所（プレイヤーなど）のリージョンのスレッドで呼ばれる。ほかのプレイヤーやほかの場所を触るときは、相手の `entity.getScheduler()` や、その場所の `getRegionScheduler()` に処理を渡す。全プレイヤーへのループ（`getOnlinePlayers()` で各プレイヤーを操作するなど）も、プレイヤーごとにそのスケジューラへ渡す。
+5. テレポートは `teleportAsync()`（`check.ps1` は `teleport(` を warning にする）。
+6. 静的なフィールドやプラグインのフィールドを、複数のリージョンから同時に読み書きする（スレッドが違う）。`ConcurrentHashMap`、`AtomicInteger` などにする。
+7. 実行中の環境が Folia かどうかで処理を変えるなら、`io.papermc.paper.threadedregions.RegionizedServer` のクラスがあるかで判断する（`/paper/dev/folia-support/index.md` の `isFolia()`）。
+8. **確かめるのは Folia のサーバーで**: `scripts/run-server.ps1 -Platform folia`（プロジェクトの版に Folia のビルドが無ければ `-Minecraft <Folia のある版>`）。Paper のサーバーでも動くことを、ふだんの `scripts/run-server.ps1` で確かめる。
 
-資料: `/paper/dev/folia-support/index.md`
+資料: `/paper/dev/folia-support/index.md`、Folia の仕組み: `/folia/reference/overview/index.md`
 
 ## AI がやりがちな失敗
 

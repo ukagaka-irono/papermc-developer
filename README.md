@@ -1,6 +1,6 @@
 # papermc-developer
 
-Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布するための**スキル**です。Bukkit/Spigot 互換の `plugin.yml` のプラグインと、`paper-plugin.yml` の Paper プラグインに対応し、Folia への対応も手伝います。**Paper 1.7.10 から最新の 26.x まで**、どの版のサーバー向けにも作れます。
+Minecraft の **PaperMC**（[Paper](https://papermc.io/software/paper)、[Folia](https://papermc.io/software/folia)、[Velocity](https://papermc.io/software/velocity)）のプラグインを、AI と一緒に作る・直す・動かして確かめる・配布するための**スキル**です。Bukkit/Spigot 互換の `plugin.yml` のプラグインと、`paper-plugin.yml` の Paper プラグインに対応し、Folia への対応も手伝います。**Paper 1.7.10 から最新の 26.x まで**、どの版のサーバー向けにも作れます。Folia（リージョンごとに並列で動く Paper）で動くプラグインと、Velocity（プロキシ）のプラグインも作れます。
 
 日本語で「〜するプラグインを作って」「エラーを直して」「サーバーで動かして見せて」と頼むだけで、AI が次のことをします。
 
@@ -9,7 +9,7 @@ Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作�
 | 作る | 対象の版に合わせたプロジェクトのひな形（Gradle、Java、コマンド、メッセージ、テスト）。最新の版なら Brigadier と MiniMessage と MockBukkit、1.8.8 などの古い版なら `plugin.yml` のコマンドと色コードと Java 8、というように、API の依存、Java、`api-version` まで版ごとに変わる。版はその場で調べる |
 | 書く | コマンド、イベント、設定、権限、スケジューラ、PDC など。対象の版の API で書く（最新の版では、AI がやりがちな古い書き方（`ChatColor`、`getCommand` の宣言漏れ、非同期でのワールド操作など）を避け、古い版では、その版に無い API を使わない） |
 | 確かめる | 記述ファイルの検査、コンパイル、テストを 1 回で行い、エラーを `ファイル:行` で示して直す。javac の表示が日本語でも読む |
-| 動かして見せる | 作者のサーバーとは別のテスト用 Paper サーバーをバックグラウンドで立て、プラグインが有効になったか、ログのエラーを報告する。RCON でコマンドを送って結果を見る。作者はクライアントで `localhost` に入って触れる |
+| 動かして見せる | 作者のサーバーとは別のテスト用 Paper / Folia サーバー、または Velocity プロキシとその後ろの Paper サーバーをバックグラウンドで立て、プラグインが有効になったか、ログのエラーを報告する。RCON でコマンドを送って結果を見る。作者はクライアントで `localhost` に入って触れる |
 | 配布する | 中身を検査した配布用 jar（サーバーの API を同梱していないか、版が埋まっているか）。GitHub Actions、GitHub Releases、Hangar、Modrinth への公開の手伝い |
 | 更新する | Paper / Minecraft の版を上げる（paper-api、Java、MockBukkit、ワークフローをまとめて直し、ビルドを確かめる） |
 
@@ -71,6 +71,8 @@ claude plugin install papermc-developer --scope project
 ```
 セットアップして
 夜をスキップする投票のプラグインを作りたい
+Folia でも動くようにして
+Velocity のプラグインを作って
 /home コマンドを足して
 チェックして
 サーバーで動かして見せて

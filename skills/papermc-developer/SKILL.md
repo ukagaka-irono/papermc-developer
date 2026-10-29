@@ -1,6 +1,6 @@
 ---
 name: papermc-developer
-description: Minecraft の Paper サーバー用プラグイン（Bukkit/Spigot 互換の plugin.yml と、paper-plugin.yml。Folia 対応も。Paper 1.7.10 から最新の 26.x まで）を作る・直す・動かして確かめる・配布する。新しいプラグインのひな形を作る、コマンド・イベント・設定・権限・スケジューラなどのコードを書く、ビルドやテストのエラーを直す、テスト用の Paper サーバーを立てて RCON でコマンドを送りログを見る、配布用の jar を作って GitHub Releases / Hangar / Modrinth に出す、Paper の版（paper-api、Java）を上げる、といったとき。settings.gradle.kts / build.gradle.kts（または pom.xml）と src/main/resources/plugin.yml のあるフォルダが対象。Minecraft plugin, Paper, Spigot, Bukkit, Folia, Brigadier, Adventure, MiniMessage, MockBukkit, run-paper の話題を含む。
+description: Minecraft の PaperMC のプラグイン（Paper サーバー用（Bukkit/Spigot 互換の plugin.yml と、paper-plugin.yml。Paper 1.7.10 から最新の 26.x まで）、Folia 対応、Velocity プロキシ用）を作る・直す・動かして確かめる・配布する。新しいプラグインのひな形を作る、コマンド・イベント・設定・権限・スケジューラなどのコードを書く、ビルドやテストのエラーを直す、テスト用の Paper / Folia サーバーや Velocity プロキシ（と後ろの Paper サーバー）を立ててコマンドを送りログを見る、配布用の jar を作って GitHub Releases / Hangar / Modrinth に出す、Paper の版（paper-api、Java）を上げる、といったとき。settings.gradle.kts / build.gradle.kts（または pom.xml）と src/main/resources/plugin.yml（Velocity なら velocity-api の依存と @Plugin）のあるフォルダが対象。Minecraft plugin, Paper, Spigot, Bukkit, Folia, Velocity, proxy, Brigadier, Adventure, MiniMessage, MockBukkit, run-paper, run-velocity の話題を含む。
 allowed-tools:
   - 'Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_SKILL_DIR}/scripts/doctor.ps1*)'
   - 'Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_SKILL_DIR}/scripts/versions.ps1*)'
@@ -16,11 +16,12 @@ allowed-tools:
   - 'WebFetch(domain:jd.papermc.io)'
   - 'WebFetch(domain:fill.papermc.io)'
   - 'WebFetch(domain:docs.mockbukkit.org)'
+  - 'WebFetch(domain:papermc.io)'
 ---
 
 # papermc-developer
 
-Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布するためのスキル。対象は **Paper 1.7.10 から最新（26.x）まで**。版によって使える API、Java、記述ファイルの書き方が違う（`references/versions.md`）。作者（ユーザー）は「何を作りたいか」に集中し、決まった作業（環境の準備、ビルドとテスト、テストサーバーでの確認、配布用 jar の作成、版の更新）はこちらで引き受ける。
+Minecraft の **PaperMC** のプラグインを、AI と一緒に作る・直す・動かして確かめる・配布するためのスキル。対象は **Paper のプラグイン（1.7.10 から最新の 26.x まで）、その Folia 対応、Velocity（プロキシ）のプラグイン**。Velocity のプラグインは Paper のプラグインとは別物（`references/velocity.md`）。版によって使える API、Java、記述ファイルの書き方が違う（`references/versions.md`）。作者（ユーザー）は「何を作りたいか」に集中し、決まった作業（環境の準備、ビルドとテスト、テストサーバーでの確認、配布用 jar の作成、版の更新）はこちらで引き受ける。
 
 作者は、スキルの名前もコマンドも知らない。「〜して」という普通の言葉で頼まれる。何ができるかを聞かれたときや、準備を終えたときは、「〜と頼んでください」の形で例を示す。作者が Java や Gradle に慣れているとは限らない。説明は、何が起きたか・次に何をするかを先に、用語は短く添える程度にする。
 
@@ -65,7 +66,8 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 | 「ブランチを分けたい」「develop を作って」「作業用のブランチを作って」「develop にマージして」 | `references/workflows/branches.md` |
 | 「Paper を最新にして」「1.21 から 26 に上げて」「対応バージョンを上げて」「今の最新は？」 | `references/workflows/update-paper.md` |
 | 「1.8.8 用のプラグインを作って」「1.12.2 のサーバーで動くようにして」「古い版にも対応したい」 | `references/versions.md`（作るなら `references/workflows/new-plugin.md`） |
-| 「Folia に対応して」 | `references/paper-api.md` の「Folia」 |
+| 「Folia に対応して」「Folia でも動くようにして」「Folia で試して」 | `references/paper-api.md` の「Folia」 |
+| 「Velocity のプラグインを作って」「プロキシ用のプラグイン」「BungeeCord から Velocity に移したい」「サーバー間を移動させたい」 | `references/velocity.md`（作るなら `references/workflows/new-plugin.md`） |
 | 「スキルを更新して」「papermc-developer を最新にして」 | `references/workflows/update-skill.md` |
 
 ## 作業のルール
@@ -106,6 +108,7 @@ Paper API、イベント、`plugin.yml` / `paper-plugin.yml` の項目、コマ�
 | `references/commands.md` | スクリプトの一覧、オプション、終了コード、ホームフォルダ |
 | `references/layout.md` | プロジェクトの構成。`build.gradle.kts`、`plugin.yml` と `paper-plugin.yml` の違い、何をコミットするか |
 | `references/paper-api.md` | 今の Paper でのコードの書き方の要点と、AI がやりがちな失敗 |
+| `references/velocity.md` | Velocity（プロキシ）のプラグイン: 作り方、書き方の要点、AI がやりがちな失敗、テストのプロキシと後ろの Paper サーバー |
 | `references/versions.md` | 対応する版（1.7.10〜）と、版ごとの API の依存、Java、`api-version`、コマンドとメッセージの書き方の違い |
 | `references/testing.md` | MockBukkit のテストと、テストサーバーでの確認の使い分け |
 | `references/ai-guidelines.md` | AI を使ったプラグイン制作の約束（ライセンス、安全、配布先の規則） |

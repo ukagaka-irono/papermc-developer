@@ -9,6 +9,7 @@
   -Tail <n>         the last n entries (after filtering)
   -Pattern <regex>  only entries whose text matches
   -Wait <seconds>   waits for a NEW entry that passes the filters (e.g. a timer task's output), shows it, and stops
+  -Backend          Velocity projects: the log of the Paper server behind the test proxy (default: the proxy's)
   Exit codes: 0 / 1 no log, or -Wait timed out / 2 the shown entries include an ERROR / 3 no test server folder.
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/server-log.ps1
@@ -21,7 +22,8 @@ param(
     [switch]$Plugin,
     [int]$Tail = 40,
     [string]$Pattern,
-    [int]$Wait = 0
+    [int]$Wait = 0,
+    [switch]$Backend
 )
 . (Join-Path $PSScriptRoot 'lib/common.ps1')
 . (Join-Path $PSScriptRoot 'lib/server.ps1')
@@ -32,8 +34,12 @@ if (-not $project) { Write-PaperDevStatus 'error' 'no Gradle or Maven project fo
 $serverDir = Get-PaperDevServerDir $project
 if (-not (Test-Path -LiteralPath $serverDir)) { Write-PaperDevStatus 'missing' 'no test server yet (scripts/run-server.ps1)'; exit 3 }
 $logPath = Join-Path $serverDir 'logs/latest.log'
+if ($project.Kind -eq 'velocity') {
+    if ($Backend) { $logPath = Join-Path $serverDir 'backend/logs/latest.log' } else { $logPath = Join-Path $serverDir 'proxy/logs/latest.log' }
+} elseif ($Backend) { Write-PaperDevStatus 'error' '-Backend is for Velocity projects (the Paper server behind the test proxy)'; exit 1 }
 if (-not (Test-Path -LiteralPath $logPath)) { Write-PaperDevStatus 'error' ('no log: ' + $logPath); exit 1 }
 $session = Get-PaperDevSession $project
+if ($session -and $Backend -and $session.PSObject.Properties['backend']) { $session = $session.backend }
 $pluginName = Get-PaperDevPluginName $project
 $package = Get-PaperDevPluginPackage $project
 

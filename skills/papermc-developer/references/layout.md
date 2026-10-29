@@ -1,5 +1,7 @@
 # プロジェクトの構成
 
+（Velocity のプラグインは、`plugin.yml` の代わりに `@Plugin` の注釈で、構成も違う: `references/velocity.md`）
+
 `scripts/new-plugin.ps1` が作るプロジェクト（Gradle Kotlin DSL、Java）を例に、どのファイルが何をするか。既存のプロジェクトが Maven や Groovy DSL、Kotlin でも、考え方は同じ。
 
 ```

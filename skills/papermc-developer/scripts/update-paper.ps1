@@ -19,6 +19,7 @@
 param(
     [string]$ProjectRoot,
     [string]$Minecraft,
+    [string]$VelocityVersion,
     [switch]$ApiVersion,
     [switch]$NoCheck,
     [switch]$DryRun
@@ -30,16 +31,30 @@ $project = Resolve-PaperDevProject $ProjectRoot
 if (-not $project) { Write-PaperDevStatus 'error' 'no Gradle or Maven project found (pass -ProjectRoot)'; exit 1 }
 $current = Get-PaperDevProjectVersions $project
 $platform = $current.Platform
+$mock = $null
+$fromEra = $null
+if ($platform -eq 'velocity') {
+    # Velocity: velocity-api (compileOnly and annotationProcessor), run-velocity's velocityVersion, the Java toolchain.
+    try {
+        if (-not $VelocityVersion) { $VelocityVersion = Get-PaperDevLatestVelocity }
+        $vjava = [int](Get-PaperDevVersionInfo -Minecraft $VelocityVersion -Project 'velocity').JavaMinimum
+    } catch { Write-PaperDevStatus 'error' ('lookup failed: ' + $_.Exception.Message); exit 1 }
+    $Minecraft = $VelocityVersion
+    $era = [PSCustomObject]@{ JavaMin = $vjava; JavaMax = 99; JavaPreferred = $vjava; ApiVersion = $false; Brigadier = $true; MiniMessage = $true; PaperPlugin = $false }
+    $dep = [PSCustomObject]@{ Group = 'com.velocitypowered'; Artifact = 'velocity-api'; Version = $VelocityVersion; Coordinate = ('com.velocitypowered:velocity-api:' + $VelocityVersion) }
+    $current.Minecraft = $current.Velocity
+    $current.PaperApi = $current.Velocity
+    $ApiVersion = $false
+} else {
 try {
     if (-not $Minecraft) { $Minecraft = Get-PaperDevLatestMinecraft -Project $platform }
     $info = Get-PaperDevVersionInfo -Minecraft $Minecraft -Project $platform
-    $mock = $null
     if ($current.MockBukkit) { $mock = Get-PaperDevMockBukkit -Minecraft $Minecraft }
 } catch { Write-PaperDevStatus 'error' ('lookup failed: ' + $_.Exception.Message); exit 1 }
 $era = Get-PaperDevEra -Minecraft $Minecraft -JavaMinimum ([int]$info.JavaMinimum)
-$fromEra = $null
 if ($current.Minecraft) { $fromEra = Get-PaperDevEra -Minecraft $current.Minecraft }
 $dep = Get-PaperDevApiDependency $Minecraft
+}
 $coordinate = $dep.Coordinate
 $mavenVersion = $dep.Version
 if (Test-PaperDevModernVersion $Minecraft) { $mavenVersion = '[' + $Minecraft + '.build,)' }
@@ -80,6 +95,8 @@ foreach ($f in $files) {
     $orig = $text
     $leaf = Split-Path -Leaf $f
     if ($leaf -match '\.gradle(\.kts)?$') {
+        $text = Update-Text $f $text 'com\.velocitypowered:velocity-api:[0-9][^"''\s)]*' { param($m) $coordinate } 'api dependency'
+        $text = Update-Text $f $text 'velocityVersion\(\s*"([^"]+)"\s*\)' { param($m) 'velocityVersion("' + $Minecraft + '")' } 'run-velocity'
         # The group and artifact change with the era (paperspigot-api, com.destroystokyo.paper, io.papermc.paper).
         $text = Update-Text $f $text '(?:io\.papermc\.paper:paper-api|com\.destroystokyo\.paper:paper-api|org\.github\.paperspigot:paperspigot-api):[0-9][^"''\s)]*' { param($m) $coordinate } 'api dependency'
         $text = Update-Text $f $text 'dev\.folia:folia-api:[0-9][^"''\s)]*' { param($m) 'dev.folia:folia-api:' + $dep.Version } 'api dependency'
@@ -91,6 +108,7 @@ foreach ($f in $files) {
         $apiChanged = @($changes | Where-Object { $_.File -eq $f -and $_.What -eq 'api dependency' }).Count -gt 0
         if ($orig -match '(paper|paperspigot|folia)-api' -and -not $apiChanged -and $orig -notmatch [regex]::Escape($coordinate)) { [void]$manual.Add($leaf + ': the API dependency is declared in a form the script does not edit') }
     } elseif ($leaf -eq 'pom.xml') {
+        $text = Update-Text $f $text '(<artifactId>velocity-api</artifactId>\s*<version>)([^<]+)(</version>)' { param($m) $m.Groups[1].Value + $dep.Version + $m.Groups[3].Value } 'api dependency'
         $text = Update-Text $f $text '<groupId>(?:io\.papermc\.paper|com\.destroystokyo\.paper|org\.github\.paperspigot)</groupId>(\s*)<artifactId>(?:paper|paperspigot)-api</artifactId>(\s*)<version>[^<]+</version>' { param($m) '<groupId>' + $dep.Group + '</groupId>' + $m.Groups[1].Value + '<artifactId>' + $dep.Artifact + '</artifactId>' + $m.Groups[2].Value + '<version>' + $mavenVersion + '</version>' } 'api dependency'
         $text = Update-Text $f $text '<maven\.compiler\.(?:release|source|target)>(\d+(?:\.\d+)?)</maven\.compiler\.(release|source|target)>' { param($m) $old = [int](($m.Groups[1].Value -replace '^1\.', '')); '<maven.compiler.' + $m.Groups[2].Value + '>' + (Get-NewJava $old) + '</maven.compiler.' + $m.Groups[2].Value + '>' } 'java release'
     } elseif ($leaf -eq 'libs.versions.toml' -or $leaf -eq 'gradle.properties') {

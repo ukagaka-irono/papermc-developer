@@ -32,7 +32,11 @@ if ($project) {
     $versions = Get-PaperDevProjectVersions $project
     $detail = $project.Root + ' (' + $project.BuildTool + ')'
     Add-Item 'project' 'required' $true $detail 'The plugin project the scripts work on.' ''
-    if ($project.Descriptor) {
+    if ($project.Kind -eq 'velocity') {
+        $vp = Get-PaperDevVelocityPlugin $project
+        if ($vp) { Add-Item 'descriptor' 'required' $true ('Velocity plugin: @Plugin(id = "' + $vp.Id + '") on ' + $vp.Main + ' (velocity-plugin.json is generated)') 'Declares the plugin to the proxy.' '' }
+        else { Add-Item 'descriptor' 'required' $false 'velocity-api is in the build but no class has @Plugin' 'Declares the plugin to the proxy.' 'Annotate the main class with @Plugin(id = ...) (references/velocity.md).' }
+    } elseif ($project.Descriptor) {
         $rel = $project.Descriptor.Substring($project.Root.Length).TrimStart('\', '/')
         $kindText = 'Bukkit-style plugin.yml'
         if ($project.Kind -eq 'paper') { $kindText = 'Paper plugin (paper-plugin.yml)' }
@@ -55,7 +59,23 @@ if ($versions -and $versions.Minecraft) { $target = $versions.Minecraft } elseif
 if ($target -and -not $Offline) {
     try { $javaNeeded = (Get-PaperDevVersionInfo -Minecraft $target).JavaMinimum } catch { }
 }
-if ($versions) {
+if ($versions -and $versions.Platform -eq 'velocity') {
+    # Velocity: the API version, the Java the proxy needs; the test backend is the latest Paper ($target).
+    $latestVelocity = $null; $velocityJava = $null
+    if (-not $Offline) {
+        try { $latestVelocity = Get-PaperDevLatestVelocity } catch { }
+        try { $velocityJava = [int](Get-PaperDevVersionInfo -Minecraft $(if ((Get-PaperDevMinecraftVersions 'velocity') -contains $versions.Velocity) { $versions.Velocity } else { $latestVelocity }) -Project 'velocity').JavaMinimum } catch { }
+    }
+    $t = 'velocity-api ' + $versions.Velocity
+    if ($latestVelocity -and $latestVelocity -ne $versions.Velocity) { $t += ' (latest stable Velocity: ' + $latestVelocity + ')' }
+    Add-Item 'target' 'recommended' ([bool]$versions.Velocity) $t 'The Velocity version the plugin is compiled against.' 'references/workflows/update-paper.md (Velocity)'
+    if ($velocityJava) {
+        $pj = @(Find-PaperDevJdks | Where-Object { $_.Major -ge $velocityJava } | Sort-Object Major | Select-Object -First 1)
+        $d = 'Velocity runs on Java ' + $velocityJava + '+'
+        if ($pj.Count) { $d += ': ' + $pj[0].Home } else { $d += ': none installed' }
+        Add-Item 'proxy-java' 'recommended' ([bool]$pj.Count) $d 'Runs the test proxy (scripts/run-server.ps1).' ('Ask the user, then scripts/setup.ps1 -Jdk ' + $velocityJava)
+    }
+} elseif ($versions) {
     $t = 'paper-api ' + $versions.PaperApi
     if (-not $versions.PaperApi) { $t = 'paper-api not found in the build files' }
     if ($latest -and $versions.Minecraft -and $versions.Minecraft -ne $latest) { $t += ' (latest stable Minecraft: ' + $latest + ')' }
@@ -76,8 +96,14 @@ if ($target) {
     if ($era.JavaMax -ge 99) { $range += '+' } elseif ($era.JavaMax -ne $era.JavaMin) { $range += '-' + $era.JavaMax }
     $serverJava = Get-PaperDevServerJava -Minecraft $target -JavaMinimum ([int]$javaNeeded)
     $d = 'Minecraft ' + $target + ' runs on Java ' + $range
+    if ($versions -and $versions.Platform -eq 'velocity') { $d = 'the test backend (Paper ' + $target + ') runs on Java ' + $range }
     if ($serverJava) { $d += ': ' + $serverJava.Version + ' at ' + $serverJava.Path } else { $d += ': none installed' }
     Add-Item 'server-java' 'recommended' ([bool]$serverJava) $d 'Runs the test server (scripts/run-server.ps1).' ('Ask the user, then scripts/setup.ps1 -Jdk ' + $era.JavaPreferred + ' (downloads Eclipse Temurin ' + $era.JavaPreferred + '), or register an installed JDK with scripts/setup.ps1 -JavaPath <folder>.')
+}
+if ($versions -and ($versions.FoliaSupported -or $versions.Platform -eq 'folia') -and $target -and -not $Offline) {
+    $foliaOk = $false
+    try { $foliaOk = (Get-PaperDevMinecraftVersions 'folia') -contains $target } catch { }
+    Add-Item 'folia' 'recommended' $foliaOk ('folia-supported: ' + $(if ($foliaOk) { 'Folia has a build for ' + $target + ' (scripts/run-server.ps1 -Platform folia)' } else { 'Folia has no build for ' + $target })) 'Testing on Folia as well as Paper.' 'Test on a Folia version that exists: scripts/run-server.ps1 -Platform folia -Minecraft <version> (scripts/versions.ps1 shows them)'
 }
 
 if ($project) {

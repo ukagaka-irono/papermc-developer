@@ -60,7 +60,8 @@ foreach ($w in (Get-ChildItem -LiteralPath (Join-Path $skill 'references/workflo
 
 # 3. template tokens
 $known = @('PLUGIN_NAME', 'PROJECT_NAME', 'MAIN_CLASS', 'PACKAGE', 'PACKAGE_PATH', 'GROUP', 'PERMISSION_PREFIX', 'DESCRIPTION', 'DESCRIPTION_YAML', 'AUTHOR_YAML',
-    'MINECRAFT', 'API_VERSION', 'API_DEPENDENCY', 'JAVA', 'RUN_PAPER', 'FOOJAY', 'MOCKBUKKIT_ARTIFACT', 'MOCKBUKKIT_VERSION', 'JUNIT', 'DESCRIPTOR')
+    'MINECRAFT', 'API_VERSION', 'API_DEPENDENCY', 'JAVA', 'RUN_PAPER', 'FOOJAY', 'MOCKBUKKIT_ARTIFACT', 'MOCKBUKKIT_VERSION', 'JUNIT', 'DESCRIPTOR',
+    'VELOCITY', 'RUN_VELOCITY', 'VELOCITY_ID', 'DESCRIPTION_JAVA', 'AUTHORS_JAVA')
 $newPlugin = ReadText (Join-Path $skill 'scripts/new-plugin.ps1')
 foreach ($k in $known) { if ($newPlugin -notmatch ('\b' + $k + '\s*=')) { Problem ('scripts/new-plugin.ps1 does not set the token ' + $k) } }
 foreach ($t in (Get-ChildItem -LiteralPath (Join-Path $skill 'templates') -Recurse -File)) {

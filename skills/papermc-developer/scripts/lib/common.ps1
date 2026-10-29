@@ -673,6 +673,16 @@ function Resolve-PaperDevProject {
         (Test-Path -LiteralPath (Join-Path $found 'pom.xml'))) { $tool = 'maven' }
     $kind = $null
     if ($descriptor) { if ((Split-Path -Leaf $descriptor) -eq 'paper-plugin.yml') { $kind = 'paper' } else { $kind = 'bukkit' } }
+    else {
+        # A Velocity plugin has no yml: velocity-plugin.json is generated from the @Plugin annotation.
+        foreach ($dir in @($found) + @(Get-ChildItem -LiteralPath $found -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '^(\.|build$|run$|out$|target$|gradle$)' } | ForEach-Object { $_.FullName })) {
+            foreach ($n in @('build.gradle.kts', 'build.gradle', 'pom.xml', 'gradle/libs.versions.toml')) {
+                $p = Join-Path $dir $n
+                if ((Test-Path -LiteralPath $p) -and (Read-PaperDevText $p) -match 'velocity-api') { $kind = 'velocity'; $module = $dir; break }
+            }
+            if ($kind) { break }
+        }
+    }
     return [PSCustomObject]@{
         Root = $found; Module = $module; BuildTool = $tool; Descriptor = $descriptor; Kind = $kind
         Id = ((Split-Path -Leaf $found) + '-' + (Get-PaperDevShortHash $found))
@@ -694,9 +704,15 @@ function Get-PaperDevBuildFiles {
 function Get-PaperDevProjectVersions {
     # What the project targets, read from its build files. Fields are $null when not found.
     param($Project)
-    $result = [PSCustomObject]@{ PaperApi = $null; Minecraft = $null; Java = $null; RunPaper = $null; MockBukkit = $null; Platform = 'paper' }
+    $result = [PSCustomObject]@{ PaperApi = $null; Minecraft = $null; Java = $null; RunPaper = $null; MockBukkit = $null; Platform = 'paper'; Velocity = $null; FoliaSupported = $false }
+    if ($Project.Descriptor) {
+        $d = Read-PaperDevDescriptor $Project.Descriptor
+        $result.FoliaSupported = ($d.Values['folia-supported'] -eq 'true')
+    }
     foreach ($f in (Get-PaperDevBuildFiles $Project)) {
         $text = Read-PaperDevText $f
+        if (-not $result.Velocity -and $text -match '(?:com\.velocitypowered:velocity-api:|<artifactId>velocity-api</artifactId>\s*<version>)([0-9][^"''<\s)]*)') { $result.Velocity = $Matches[1]; $result.Platform = 'velocity' }
+        if (-not $result.RunPaper -and $text -match 'velocityVersion\(\s*"([^"]+)"\s*\)') { $result.RunPaper = $Matches[1] }
         # paper-api (io.papermc.paper from 1.17, com.destroystokyo.paper 1.9-1.16), paperspigot-api (1.7.10, 1.8.8),
         # and spigot-api / bukkit for Spigot projects, which also run on Paper.
         if (-not $result.PaperApi -and $text -match '(?:(?:io\.papermc\.paper|com\.destroystokyo\.paper):paper-api:|org\.github\.paperspigot:paperspigot-api:|org\.spigotmc:spigot-api:|org\.bukkit:bukkit:|(?:paper|paperspigot|spigot)-api["'']?\s*[,:]\s*version\s*=\s*["'']|<artifactId>(?:paper|paperspigot|spigot)-api</artifactId>\s*<version>)([0-9][^"''<\s]*)') { $result.PaperApi = $Matches[1] }
@@ -706,9 +722,44 @@ function Get-PaperDevProjectVersions {
         if (-not $result.RunPaper -and $text -match 'minecraftVersion\(\s*"([^"]+)"\s*\)') { $result.RunPaper = $Matches[1] }
         if (-not $result.MockBukkit -and $text -match 'org\.mockbukkit\.mockbukkit:(mockbukkit-v[0-9.]+):([^"''\s]+)') { $result.MockBukkit = $Matches[1] + ':' + $Matches[2] }
     }
+    if ($result.Platform -eq 'velocity') { $result.RunPaper = $null; return $result }
     if ($result.PaperApi -and $result.PaperApi -match '^(\d+\.\d+(?:\.\d+)?)(?:\.build|-R0\.1)') { $result.Minecraft = $Matches[1] }
     elseif ($result.RunPaper) { $result.Minecraft = $result.RunPaper }
     return $result
+}
+
+function Get-PaperDevVelocityPlugin {
+    # The @Plugin annotation of a Velocity plugin: Id, Name, Version (as written), Main class, File, Line. $null if none.
+    param($Project)
+    foreach ($r in @('src/main/java', 'src/main/kotlin')) {
+        $root = Join-Path $Project.Module $r
+        if (-not (Test-Path -LiteralPath $root)) { continue }
+        foreach ($src in (Get-ChildItem -LiteralPath $root -Recurse -File -Include '*.java', '*.kt')) {
+            $text = Read-PaperDevText $src.FullName
+            $m = [regex]::Match($text, '@Plugin\s*\((?<body>(?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\)\s*(?:@\w+(?:\([^)]*\))?\s*)*(?:public\s+|final\s+|open\s+)*class\s+(?<class>\w+)')
+            if (-not $m.Success) { continue }
+            $body = $m.Groups['body'].Value
+            $id = $null; $name = $null; $version = $null
+            if ($body -match 'id\s*=\s*"([^"]*)"') { $id = $Matches[1] }
+            if ($body -match '\bname\s*=\s*"([^"]*)"') { $name = $Matches[1] }
+            if ($body -match '\bversion\s*=\s*([^,\r\n]+)') { $version = $Matches[1].Trim() }
+            $package = ''
+            if ($text -match '(?m)^\s*package\s+([\w.]+)') { $package = $Matches[1] + '.' }
+            $line = 1 + ([regex]::Matches($text.Substring(0, $m.Index), "`n")).Count
+            return [PSCustomObject]@{ Id = $id; Name = $name; Version = $version; Main = ($package + $m.Groups['class'].Value); File = $src.FullName; Line = $line }
+        }
+    }
+    return $null
+}
+
+function Get-PaperDevLatestVelocity {
+    # Newest Velocity release whose latest build is stable (snapshots skipped).
+    foreach ($v in (Get-PaperDevMinecraftVersions 'velocity')) {
+        if ($v -match '(?i)snapshot') { continue }
+        try { $b = Get-PaperDevLatestBuild -Minecraft $v -Project 'velocity' } catch { continue }
+        if ($b.Channel -eq 'STABLE' -or $b.Channel -eq 'RECOMMENDED') { return $v }
+    }
+    throw 'No stable Velocity version found'
 }
 
 function Read-PaperDevDescriptor {
@@ -749,6 +800,11 @@ function Get-PaperDevPluginName {
     if ($Project.Descriptor) {
         $d = Read-PaperDevDescriptor $Project.Descriptor
         if ($d.Values['name']) { return $d.Values['name'] }
+    }
+    if ($Project.Kind -eq 'velocity') {
+        # Velocity logs a plugin under its id (the logger name), e.g. "[sleep-vote]".
+        $v = Get-PaperDevVelocityPlugin $Project
+        if ($v -and $v.Id) { return $v.Id }
     }
     return (Split-Path -Leaf $Project.Root)
 }
@@ -1018,11 +1074,14 @@ function Get-PaperDevLogEntries {
     $current = $null
     for ($i = $SkipLines; $i -lt $lines.Count; $i++) {
         $l = $lines[$i]
-        if ($l -match '^\[(\d\d:\d\d:\d\d)\] \[([^\]]*?)/([A-Z]+)\]: (.*)$') {
+        # Paper: "[12:00:00] [Server thread/INFO]: [Plugin] message"
+        # Velocity: "[12:00:00] [main/INFO] [logger]: message" (a plugin's logger is named by its id)
+        if ($l -match '^\[(\d\d:\d\d:\d\d)\] \[([^\]]*?)/([A-Z]+)\](?: \[([^\]]+)\])?: (.*)$') {
             # Copy the groups first: the next -match replaces $Matches.
-            $time = $Matches[1]; $thread = $Matches[2]; $level = $Matches[3]; $msg = $Matches[4]
+            $time = $Matches[1]; $thread = $Matches[2]; $level = $Matches[3]; $logger = $Matches[4]; $msg = $Matches[5]
             $source = ''
-            if ($msg -match '^\[([^\]]+)\] ') { $source = $Matches[1] }
+            if ($logger) { $source = $logger }
+            elseif ($msg -match '^\[([^\]]+)\] ') { $source = $Matches[1] }
             $current = [PSCustomObject]@{ Time = $time; Thread = $thread; Level = $level; Source = $source; Message = $msg; Lines = @($l); LineNo = ($i + 1) }
             [void]$entries.Add($current)
         } elseif ($current -and $l -ne '') {

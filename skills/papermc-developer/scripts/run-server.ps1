@@ -33,6 +33,7 @@ param(
     [switch]$NoBuild,
     [switch]$Fresh,
     [string]$Minecraft,
+    [ValidateSet('', 'paper', 'folia')][string]$Platform = '',
     [string]$Memory = '2G',
     [string[]]$ExtraPlugin = @(),
     [int]$JdwpPort = 0,
@@ -45,6 +46,11 @@ Initialize-PaperDevConsole
 
 $project = Resolve-PaperDevProject $ProjectRoot
 if (-not $project) { Write-PaperDevStatus 'error' 'no Gradle or Maven project found (pass -ProjectRoot)'; exit 1 }
+if ($project.Kind -eq 'velocity') {
+    # A Velocity plugin runs on a test proxy with a Paper server behind it.
+    & (Join-Path $PSScriptRoot 'run-proxy.ps1') @PSBoundParameters
+    exit $LASTEXITCODE
+}
 $serverDir = Get-PaperDevServerDir $project
 $session = Get-PaperDevSession $project
 $running = Test-PaperDevServerRunning $session
@@ -73,12 +79,25 @@ if (-not ($cfg.PSObject.Properties['eulaAccepted'] -and $cfg.eulaAccepted -eq $t
 }
 
 $versions = Get-PaperDevProjectVersions $project
-$platform = 'paper'
-if ($versions.Platform -eq 'folia') { $platform = 'folia' }
+# Folia: when the build uses folia-api, or when asked (-Platform folia) for a plugin with "folia-supported: true".
+# (PowerShell names are case-insensitive: $platform below is the -Platform parameter itself.)
+if (-not $Platform) {
+    $Platform = 'paper'
+    if ($versions.Platform -eq 'folia') { $Platform = 'folia' }
+}
+$platform = $Platform
+if ($platform -eq 'folia' -and -not $versions.FoliaSupported) {
+    Write-PaperDevStatus 'error' 'Folia loads only plugins with "folia-supported: true" in plugin.yml / paper-plugin.yml (references/paper-api.md, Folia)'
+    exit 1
+}
 $mc = $Minecraft
 if (-not $mc) { $mc = $versions.Minecraft }
 try {
     if (-not $mc) { $mc = Get-PaperDevLatestMinecraft -Project $platform; Write-PaperDevStatus 'note' ('no Minecraft version in the build files; using the latest stable ' + $mc) }
+    if ($platform -eq 'folia' -and (Get-PaperDevMinecraftVersions 'folia') -notcontains $mc) {
+        Write-PaperDevStatus 'missing' ('Folia has no build for ' + $mc + ' (Folia versions: ' + ((Get-PaperDevMinecraftVersions 'folia') -join ', ') + '); pass -Minecraft <version>')
+        exit 3
+    }
     $javaNeeded = (Get-PaperDevVersionInfo -Minecraft $mc -Project $platform).JavaMinimum
 } catch { Write-PaperDevStatus 'error' ('cannot look up ' + $platform + ' ' + $mc + ': ' + $_.Exception.Message); exit 3 }
 
@@ -129,38 +148,13 @@ try { $server = Get-PaperDevServerJar -Minecraft $mc -Project $platform }
 catch { Write-PaperDevStatus 'error' ('cannot get the ' + $platform + ' server jar: ' + $_.Exception.Message); exit 3 }
 
 # 4. folder, properties, plugins
-New-Item -ItemType Directory -Path (Join-Path $serverDir 'plugins') -Force | Out-Null
-if ($Fresh) {
-    foreach ($w in @('world', 'world_nether', 'world_the_end')) {
-        $p = Join-Path $serverDir $w
-        if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Recurse -Force }
-    }
-    Write-Host 'deleted the test world'
-}
-Write-PaperDevText -Path (Join-Path $serverDir 'eula.txt') -Text ("# Agreed by the user (papermc-developer setup.ps1 -AcceptEula, " + $cfg.eulaAcceptedAt + "): " + $PaperDevEulaUrl + "`neula=true`n")
 $port = 0; $rconPort = 0; $password = $null
 if ($session) { $port = [int]$session.port; $rconPort = [int]$session.rconPort; $password = [string]$session.rconPassword }
 if ($port -le 0 -or -not (Test-PaperDevPortFree $port)) { $port = Find-PaperDevFreePort 25566 25575 }
 if ($rconPort -le 0 -or -not (Test-PaperDevPortFree $rconPort)) { $rconPort = Find-PaperDevFreePort 25576 25599 @($port) }
 if ($port -le 0 -or $rconPort -le 0) { Write-PaperDevStatus 'error' 'no free port in 25566-25599'; exit 1 }
 if (-not $password) { $password = New-PaperDevPassword }
-$props = [ordered]@{
-    'server-ip' = '127.0.0.1'; 'server-port' = $port
-    'enable-rcon' = 'true'; 'rcon.port' = $rconPort; 'rcon.password' = $password; 'broadcast-rcon-to-ops' = 'false'
-    'motd' = ('papermc-developer test server: ' + $pluginName)
-    'generate-structures' = 'false'; 'spawn-protection' = '0'
-    'view-distance' = '6'; 'simulation-distance' = '6'; 'max-players' = '5'
-}
-if ($era.FlatWorld) {
-    # A flat world needs its layers; with the default "{}" the server logs "No key layers" as an ERROR.
-    $props['level-type'] = 'minecraft\:flat'
-    $props['generator-settings'] = '{"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}'
-} else {
-    # Before 1.19 the flat generator settings had other formats; use a normal world.
-    $props['level-type'] = 'default'
-    $props['generator-settings'] = ''
-}
-Set-PaperDevProperties -Path (Join-Path $serverDir 'server.properties') -Values $props
+Initialize-PaperDevPaperFolder -Directory $serverDir -Minecraft $mc -Era $era -Port $port -RconPort $rconPort -Password $password -Motd ('papermc-developer test server: ' + $pluginName) -Fresh:$Fresh
 
 $pluginsDir = Join-Path $serverDir 'plugins'
 $deployed = @()
@@ -184,18 +178,8 @@ if (Test-Path -LiteralPath $logPath) { Remove-Item -LiteralPath $logPath -Force 
 $consolePath = Join-Path $serverDir 'console.log'
 $jvm = @(('-Xms' + $Memory), ('-Xmx' + $Memory), '-Dterminal.jline=false', '-Dterminal.ansi=false', '-Dfile.encoding=UTF-8')
 if ($JdwpPort -gt 0) { $jvm += ('-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:' + $JdwpPort) }
-# Old CraftBukkit (1.12.2 and earlier) rejects "--nogui" and prints its usage; the plain "nogui" argument is read
-# by the vanilla server code of those versions instead.
-$noGui = '--nogui'
-if (-not (Test-PaperDevVersionAtLeast $mc '1.16')) { $noGui = 'nogui' }
-$jvm += @('-jar', $server.Path, $noGui)
-if (Test-PaperDevWindows) {
-    $cmdLine = '/d /s /c ""' + $serverJava.Path + '" ' + (ConvertTo-PaperDevArgumentString $jvm) + ' > "' + $consolePath + '" 2>&1"'
-    $proc = Start-Process -FilePath $env:ComSpec -ArgumentList $cmdLine -WorkingDirectory $serverDir -WindowStyle Hidden -PassThru
-} else {
-    $quoted = (@($serverJava.Path) + $jvm | ForEach-Object { "'" + ($_ -replace "'", "'\''") + "'" }) -join ' '
-    $proc = Start-Process -FilePath 'sh' -ArgumentList @('-c', ('exec ' + $quoted + " > '" + $consolePath + "' 2>&1")) -WorkingDirectory $serverDir -PassThru
-}
+$jvm += @('-jar', $server.Path, (Get-PaperDevNoGuiArgument $mc))
+$proc = Start-PaperDevServerProcess -Directory $serverDir -Java $serverJava.Path -Arguments $jvm -ConsolePath $consolePath
 $session = [PSCustomObject]@{
     pid = $proc.Id; port = $port; rconPort = $rconPort; rconPassword = $password; platform = $platform; minecraft = $mc
     build = $server.Build.Build; pluginName = $pluginName; package = $package; deployed = $newDeployed
@@ -204,20 +188,7 @@ $session = [PSCustomObject]@{
 Save-PaperDevSession $project $session
 Write-Host ('starting ' + $platform + ' ' + $mc + ' build ' + $server.Build.Build + ' (pid ' + $proc.Id + ', java ' + $serverJava.Version + '); the first start takes longer')
 
-$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-$done = $false
-while ((Get-Date) -lt $deadline) {
-    Start-Sleep -Seconds 1
-    if (Test-Path -LiteralPath $logPath) {
-        $text = $null
-        try {
-            $fs = New-Object System.IO.FileStream($logPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-            try { $text = (New-Object System.IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Dispose() }
-        } catch { }
-        if ($text -and $text -match '\]: Done \(') { $done = $true; break }
-    }
-    if (-not (Test-PaperDevProcessAlive $proc.Id)) { break }
-}
+$done = Wait-PaperDevServerDone -LogPath $logPath -ProcessId $proc.Id -TimeoutSeconds $TimeoutSeconds
 
 if (-not $done) {
     if (Test-PaperDevProcessAlive $proc.Id) {

@@ -52,6 +52,8 @@ tests/e2e.ps1                                   ひな形を作ってビルド�
 | Gradle | `services.gradle.org/versions/current` と、配布物の `.sha256`。Wrapper は、ホームフォルダに取った Gradle で `gradle wrapper` を実行して作る |
 | javac の出力 | JDK の表示言語で level の語が変わる（`error` / `エラー`）。Gradle は失敗時に同じメッセージを字下げして繰り返す。`Get-PaperDevCompilerMessages` は語を緩く読み、重複を除く |
 | テストサーバー | Windows は `cmd /d /s /c ""java" ... > console.log 2>&1"` を `Start-Process -WindowStyle Hidden` で（PID は cmd のもの。止めるときは `taskkill /T`）。その他は `sh -c 'exec java ...'`。起動の判定は `logs/latest.log` の `]: Done (`。停止は RCON の `stop`。RCON は Source RCON の形式で、分割された返事の終わりを知るため、未知の種類のパケットを続けて送り、その返事を区切りにする |
+| Folia | `folia-supported: true`（`new-plugin.ps1 -Folia`、テンプレートの `FOLIA` ブロック）と paper-api のまま。テストは `run-server.ps1 -Platform folia` が Fill API の `folia` から jar を取る（チャンネルが ALPHA のことがある）。Folia でも RCON は動く。`check.ps1` の Folia の検査は `getServer()` / `Bukkit` / `server` の `.getScheduler()` だけを見る（`entity.getScheduler()` は Folia の正しい API）。PowerShell の名前は大文字小文字を区別しないので、`-Platform` の引数とスクリプトの `$platform` は同じ変数（実際に踏んだ） |
+| Velocity | プロジェクトは `velocity-api` を含むビルドファイルで見分ける（`Kind = velocity`、記述ファイル無し）。`@Plugin` は `Get-PaperDevVelocityPlugin` が正規表現で読む。テンプレート（`templates/velocity/`）は `BuildConstants` を Gradle のタスクで作り、`@Plugin(version = BuildConstants.VERSION)` にする。テストのプロキシ（`run-proxy.ps1`）は、`velocity.toml` を jar の `default-velocity.toml` から作って書き換え（1 回の起動で済む）、バックエンドの `config/paper-global.yml` は無ければ `proxies.velocity` だけを書く（Paper が残りを補う）。Velocity には RCON が無いので、`lib/console-bridge.ps1`（隠れた PowerShell）が java の標準入力をつなぎ、キューのファイルに足された行を送る。ログの形式は `[時刻] [スレッド/LEVEL] [ロガー]: ` で、プラグインのロガー名はプラグインの id |
 | `latest.log` | 行頭が `[HH:MM:SS] [スレッド/LEVEL]: ` の行が 1 件の始まり。それ以外の行（スタックトレース）は直前の件に付ける。プラグインの出力は `[プラグイン名] ` で始まる |
 
 ## 更新（プラグイン）

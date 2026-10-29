@@ -32,7 +32,9 @@ try {
     # An old era: plugin.yml commands, legacy color codes, Java 8, paperspigot-api, no api-version.
     Step 'new 1.8.8 project' 'new-plugin.ps1' @('-Name', 'E2eOld', '-Minecraft', '1.8.8', '-Path', (Join-Path $work 'old'))
     Step '-PaperPlugin refused before 1.20.6' 'new-plugin.ps1' @('-Name', 'E2eNo', '-Minecraft', '1.16.5', '-PaperPlugin', '-Path', (Join-Path $work 'no'), '-DryRun') @(1)
-    foreach ($p in @('bukkit', 'paper', 'old')) {
+    Step 'new Folia project' 'new-plugin.ps1' @('-Name', 'E2eFolia', '-Folia', '-NoTests', '-Path', (Join-Path $work 'folia'))
+    Step 'new Velocity project' 'new-plugin.ps1' @('-Name', 'E2eProxy', '-Velocity', '-Path', (Join-Path $work 'proxy'))
+    foreach ($p in @('bukkit', 'paper', 'old', 'folia', 'proxy')) {
         $root = Join-Path $work $p
         Step ('doctor ' + $p) 'doctor.ps1' @('-ProjectRoot', $root)
         Step ('check ' + $p) 'check.ps1' @('-ProjectRoot', $root)

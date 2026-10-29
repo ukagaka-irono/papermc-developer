@@ -49,7 +49,22 @@ function Report {
 # ---------------------------------------------------------------- descriptor
 Write-Host ('project: ' + $project.Root)
 $versions = Get-PaperDevProjectVersions $project
-if (-not $project.Descriptor) {
+$sourceRoots = @('src/main/java', 'src/main/kotlin') | ForEach-Object { Join-Path $project.Module $_ }
+if ($project.Kind -eq 'velocity') {
+    # Velocity: velocity-plugin.json is generated from @Plugin; check the annotation instead of a yml.
+    $vp = Get-PaperDevVelocityPlugin $project
+    if (-not $vp) { Report 'error' 'no class with the @Plugin annotation (com.velocitypowered.api.plugin.Plugin) in src/main/java' }
+    else {
+        if (-not $vp.Id) { Report 'error' '@Plugin has no id' $vp.File $vp.Line }
+        elseif ($vp.Id -notmatch '^[a-z][a-z0-9_-]{0,63}$') { Report 'error' ('@Plugin id "' + $vp.Id + '" is invalid: lowercase letters, digits, - and _, starting with a letter, at most 64') $vp.File $vp.Line }
+        if (-not $vp.Version) { Report 'warning' '@Plugin has no version (the proxy shows none)' $vp.File $vp.Line }
+        if ($errors -eq 0) { Write-PaperDevStatus 'ok' ('@Plugin: id ' + $vp.Id + ', main ' + $vp.Main + $(if ($versions.Velocity) { ', builds against Velocity ' + $versions.Velocity } else { '' })) }
+    }
+    $buildText = (Get-PaperDevBuildFiles $project | ForEach-Object { Read-PaperDevText $_ }) -join "`n"
+    if ($project.BuildTool -eq 'gradle' -and $buildText -notmatch 'annotationProcessor[^\r\n]*velocity-api') {
+        Report 'warning' 'no annotationProcessor("com.velocitypowered:velocity-api:...") in the build: velocity-plugin.json is not generated unless it is written by hand (references/velocity.md)'
+    }
+} elseif (-not $project.Descriptor) {
     Report 'error' 'no src/main/resources/plugin.yml or paper-plugin.yml'
 } else {
     $d = Read-PaperDevDescriptor $project.Descriptor
@@ -76,7 +91,6 @@ if (-not $project.Descriptor) {
         }
     }
     $main = $d.Values['main']
-    $sourceRoots = @('src/main/java', 'src/main/kotlin') | ForEach-Object { Join-Path $project.Module $_ }
     if ($main -and $main -notmatch '\$\{') {
         $relMain = $main -replace '\.', '/'
         $found = $false
@@ -104,6 +118,28 @@ if (-not $project.Descriptor) {
                     $cmd = $m.Groups[1].Value
                     if ($project.Kind -eq 'paper') { Report 'error' ('getCommand("' + $cmd + '") returns null in a Paper plugin; register the command with the lifecycle API (references/paper-api.md)') $src.FullName $lineNo }
                     elseif ($d.Commands -notcontains $cmd) { Report 'error' ('getCommand("' + $cmd + '") but "' + $cmd + '" is not under commands: in plugin.yml (it returns null)') $src.FullName $lineNo }
+                }
+            }
+        }
+    }
+    # Folia: a plugin that declares folia-supported must not use the BukkitScheduler (it throws on Folia).
+    $foliaDeclared = ($d.Values['folia-supported'] -eq 'true')
+    if ($foliaDeclared -or $versions.Platform -eq 'folia') {
+        if (-not $foliaDeclared) { Report 'error' 'the build uses folia-api but the descriptor has no "folia-supported: true" (Folia refuses to load the plugin)' $file 0 }
+        $foliaRules = @(
+            # Only the server's scheduler: entity.getScheduler() is Folia's EntityScheduler and is right.
+            @{ Pattern = '(?:getServer\(\)|\bBukkit|\bserver)\s*\.\s*getScheduler\(\)|\bBukkitScheduler\b'; Level = 'error'; Text = 'the BukkitScheduler does not work on Folia (UnsupportedOperationException); use getGlobalRegionScheduler(), getRegionScheduler(), entity.getScheduler() or getAsyncScheduler()' }
+            @{ Pattern = '\bBukkitRunnable\b'; Level = 'error'; Text = 'BukkitRunnable runs on the BukkitScheduler, which does not work on Folia; use the region-aware schedulers' }
+            @{ Pattern = '\.teleport\(\s*[^)]'; Level = 'warning'; Text = 'teleport() blocks and may cross regions on Folia; use teleportAsync()' }
+        )
+        foreach ($r in $sourceRoots) {
+            if (-not (Test-Path -LiteralPath $r)) { continue }
+            foreach ($src in (Get-ChildItem -LiteralPath $r -Recurse -File -Include '*.java', '*.kt')) {
+                $lineNo = 0
+                foreach ($line in (Read-PaperDevText $src.FullName) -split "`r?`n") {
+                    $lineNo++
+                    if ($line -match '^\s*(//|\*|/\*)') { continue }
+                    foreach ($rule in $foliaRules) { if ($line -match $rule.Pattern) { Report $rule.Level ('Folia: ' + $rule.Text) $src.FullName $lineNo } }
                 }
             }
         }
