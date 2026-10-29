@@ -316,48 +316,112 @@ function Get-PaperDevLatestMinecraft {
     throw ('No stable version found for ' + $Project)
 }
 
-function Get-PaperDevApiCoordinate {
-    # The paper-api version string for a Minecraft version, as the Paper docs write it.
+function ConvertTo-PaperDevVersion {
+    # "1.7.10" / "26.3" / "1.21.11-rc1" -> [version] of the numeric part, for comparisons.
     param([string]$Minecraft)
-    if (Test-PaperDevModernVersion $Minecraft) { return ($Minecraft + '.build.+') }
-    return ($Minecraft + '-R0.1-SNAPSHOT')
+    $parts = @(([regex]::Match([string]$Minecraft, '^\d+(\.\d+){0,3}').Value -split '\.') | Where-Object { $_ -ne '' })
+    while ($parts.Count -lt 3) { $parts += '0' }
+    return [version]($parts[0..2] -join '.')
+}
+
+function Test-PaperDevVersionAtLeast {
+    param([string]$Minecraft, [string]$Than)
+    return ((ConvertTo-PaperDevVersion $Minecraft) -ge (ConvertTo-PaperDevVersion $Than))
 }
 
 function Test-PaperDevModernVersion {
     # 26.1 and later use "<version>.build.<n>-<channel>" for paper-api; 1.x used "-R0.1-SNAPSHOT".
     param([string]$Minecraft)
-    return ($Minecraft -match '^(\d+)\.' -and [int]$Matches[1] -ge 26)
+    return (Test-PaperDevVersionAtLeast $Minecraft '26.0')
+}
+
+function Get-PaperDevEra {
+    # What a Minecraft version offers to a plugin, and the Java it runs on. Paper supports 1.7.10 and later.
+    #   Brigadier    commands through the lifecycle API (Paper 1.20.6+); before that plugin.yml "commands:" + CommandExecutor
+    #   MiniMessage  in the server API (Paper 1.18.2+); before that legacy "&" color codes
+    #   ApiVersion   plugin.yml "api-version" exists (1.13+); with a patch number only from 1.20.5
+    #   PaperPlugin  paper-plugin.yml (only offered with Brigadier: a Paper plugin cannot use plugin.yml commands)
+    #   FlatWorld    the test server uses a flat world (the generator settings format is the 1.19+ one)
+    #   Java*        minimum (Fill API, raised to 8), preferred (the LTS to build and run with), maximum the server runs on
+    param([string]$Minecraft, [int]$JavaMinimum = 0)
+    $v = ConvertTo-PaperDevVersion $Minecraft
+    $preferred = 8; $max = 8
+    if ($v -ge [version]'26.0.0') { $preferred = 25; $max = 99 }
+    elseif ($v -ge [version]'1.20.5') { $preferred = 21; $max = 25 }
+    elseif ($v -ge [version]'1.18.0') { $preferred = 17; $max = 21 }
+    elseif ($v -ge [version]'1.17.0') { $preferred = 17; $max = 17 }
+    elseif ($v -ge [version]'1.13.0') { $preferred = 8; $max = 11 }
+    $min = $JavaMinimum
+    if ($min -lt 8) { $min = 8 }
+    if ($preferred -lt $min) { $preferred = $min }
+    if ($max -lt $preferred) { $max = $preferred }
+    return [PSCustomObject]@{
+        Minecraft = $Minecraft
+        Brigadier = ($v -ge [version]'1.20.6')
+        MiniMessage = ($v -ge [version]'1.18.2')
+        ApiVersion = ($v -ge [version]'1.13.0')
+        PaperPlugin = ($v -ge [version]'1.20.6')
+        FlatWorld = ($v -ge [version]'1.19.0')
+        JavaMin = $min; JavaPreferred = $preferred; JavaMax = $max
+    }
+}
+
+function Format-PaperDevJavaRange {
+    # "8", "8-11", "25+"
+    param($Era)
+    if ($Era.JavaMax -ge 99) { return ([string]$Era.JavaMin + '+') }
+    if ($Era.JavaMax -eq $Era.JavaMin) { return [string]$Era.JavaMin }
+    return ([string]$Era.JavaMin + '-' + $Era.JavaMax)
+}
+
+function Get-PaperDevApiDependency {
+    # The API to compile against, as the Paper docs and repository name it for each era.
+    param([string]$Minecraft)
+    $v = ConvertTo-PaperDevVersion $Minecraft
+    if ($v -ge [version]'26.0.0') { $g = 'io.papermc.paper'; $a = 'paper-api'; $ver = $Minecraft + '.build.+' }
+    elseif ($v -ge [version]'1.17.0') { $g = 'io.papermc.paper'; $a = 'paper-api'; $ver = $Minecraft + '-R0.1-SNAPSHOT' }
+    elseif ($v -ge [version]'1.9.0') { $g = 'com.destroystokyo.paper'; $a = 'paper-api'; $ver = $Minecraft + '-R0.1-SNAPSHOT' }
+    else { $g = 'org.github.paperspigot'; $a = 'paperspigot-api'; $ver = $Minecraft + '-R0.1-SNAPSHOT' }
+    return [PSCustomObject]@{ Group = $g; Artifact = $a; Version = $ver; Coordinate = ($g + ':' + $a + ':' + $ver) }
+}
+
+function Get-PaperDevApiCoordinate {
+    # The version part only (kept for callers that print it).
+    param([string]$Minecraft)
+    return (Get-PaperDevApiDependency $Minecraft).Version
 }
 
 function Get-PaperDevApiVersionField {
-    # The api-version value for plugin.yml / paper-plugin.yml.
+    # The api-version value for plugin.yml / paper-plugin.yml; $null before 1.13 (the key did not exist).
+    # Servers before 1.20.5 accept only "1.<minor>".
     param([string]$Minecraft)
+    if (-not (Test-PaperDevVersionAtLeast $Minecraft '1.13')) { return $null }
     if (Test-PaperDevModernVersion $Minecraft) { return $Minecraft }
-    if ($Minecraft -match '^1\.(\d+)') {
-        if ([int]$Matches[1] -ge 21 -or $Minecraft -match '^1\.20\.[5-9]') { return $Minecraft }
-        return ('1.' + $Matches[1])
-    }
+    if (Test-PaperDevVersionAtLeast $Minecraft '1.20.5') { return $Minecraft }
+    if ($Minecraft -match '^1\.(\d+)') { return ('1.' + $Matches[1]) }
     return $Minecraft
 }
 
 function Get-PaperDevLatestApiBuild {
-    # Newest concrete paper-api version for a Minecraft version (e.g. 26.3.build.229-stable).
+    # Newest concrete API version for a Minecraft version (e.g. 26.3.build.229-stable, 1.8.8-R0.1-SNAPSHOT).
+    # $null when the repository does not have it.
     param([string]$Minecraft)
-    $versions = Get-PaperDevMavenVersions -Repository $PaperDevMavenPaper -Group 'io.papermc.paper' -Artifact 'paper-api'
+    $dep = Get-PaperDevApiDependency $Minecraft
     if (Test-PaperDevModernVersion $Minecraft) {
+        $versions = Get-PaperDevMavenVersions -Repository $PaperDevMavenPaper -Group $dep.Group -Artifact $dep.Artifact
         $prefix = $Minecraft + '.build.'
         $best = $null; $bestN = -1
-        foreach ($v in $versions) {
-            if ($v.StartsWith($prefix) -and $v -match '\.build\.(\d+)-') {
+        foreach ($ver in $versions) {
+            if ($ver.StartsWith($prefix) -and $ver -match '\.build\.(\d+)-') {
                 $n = [int]$Matches[1]
-                if ($n -gt $bestN) { $bestN = $n; $best = $v }
+                if ($n -gt $bestN) { $bestN = $n; $best = $ver }
             }
         }
         return $best
     }
-    $want = $Minecraft + '-R0.1-SNAPSHOT'
-    if ($versions -contains $want) { return $want }
-    return $null
+    # Snapshot versions are not always listed in the artifact's metadata; ask for the version folder itself.
+    $url = $PaperDevMavenPaper + '/' + ($dep.Group -replace '\.', '/') + '/' + $dep.Artifact + '/' + $dep.Version + '/maven-metadata.xml'
+    try { Invoke-PaperDevWeb $url | Out-Null; return $dep.Version } catch { return $null }
 }
 
 function Get-PaperDevMockBukkit {
@@ -449,6 +513,113 @@ function Get-PaperDevJava {
     return $null
 }
 
+function Get-PaperDevJdkMajor {
+    # The major version of a JDK folder from its "release" file ($null when it is not a JDK).
+    param([string]$JdkHome)
+    $release = Join-Path $JdkHome 'release'
+    if (-not (Test-Path -LiteralPath $release)) { return $null }
+    $text = Read-PaperDevText $release
+    if ($text -notmatch 'JAVA_VERSION="([^"]+)"') { return $null }
+    $full = $Matches[1]
+    if ($full -match '^1\.(\d+)') { return [int]$Matches[1] }
+    if ($full -match '^(\d+)') { return [int]$Matches[1] }
+    return $null
+}
+
+function Find-PaperDevJdks {
+    # Installed JDKs: local.json "jdks" ({"8": "C:\\path"}), the home folder's jdk/, JAVA_HOME, the java on PATH,
+    # and the usual install folders (vendors' folders, Gradle toolchains in ~/.gradle/jdks, IntelliJ's ~/.jdks,
+    # /usr/lib/jvm, macOS JavaVirtualMachines, SDKMAN). Returns objects with Major, Home, Java.
+    $exe = 'java'
+    if (Test-PaperDevWindows) { $exe = 'java.exe' }
+    $homes = New-Object System.Collections.ArrayList
+    $cfg = Get-PaperDevLocalConfig
+    if ($cfg.PSObject.Properties['jdks'] -and $cfg.jdks) { foreach ($p in $cfg.jdks.PSObject.Properties) { [void]$homes.Add([string]$p.Value) } }
+    $roots = @((Join-Path (Get-PaperDevHome) 'jdk'))
+    $userHome = $env:USERPROFILE
+    if (-not $userHome) { $userHome = $HOME }
+    $roots += @((Join-Path $userHome '.gradle/jdks'), (Join-Path $userHome '.jdks'), (Join-Path $userHome '.sdkman/candidates/java'))
+    if (Test-PaperDevWindows) {
+        foreach ($pf in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+            if (-not $pf) { continue }
+            foreach ($vendor in @('Eclipse Adoptium', 'Java', 'Zulu', 'Microsoft', 'Amazon Corretto', 'BellSoft', 'Semeru', 'OpenJDK', 'Eclipse Foundation', 'AdoptOpenJDK')) { $roots += (Join-Path $pf $vendor) }
+        }
+    } else {
+        $roots += @('/usr/lib/jvm', '/usr/java', '/opt/java', '/Library/Java/JavaVirtualMachines')
+    }
+    foreach ($r in $roots) {
+        if (-not $r -or -not (Test-Path -LiteralPath $r)) { continue }
+        foreach ($d in (Get-ChildItem -LiteralPath $r -Directory -ErrorAction SilentlyContinue)) {
+            [void]$homes.Add($d.FullName)
+            [void]$homes.Add((Join-Path $d.FullName 'Contents/Home'))
+            foreach ($d2 in (Get-ChildItem -LiteralPath $d.FullName -Directory -ErrorAction SilentlyContinue)) { [void]$homes.Add($d2.FullName) }
+        }
+    }
+    if ($env:JAVA_HOME) { [void]$homes.Add($env:JAVA_HOME) }
+    $cmd = Get-Command $exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($cmd) {
+        $real = $cmd.Source
+        try { $item = Get-Item -LiteralPath $real; if ($item.Target) { $real = [string]@($item.Target)[0] } } catch { }
+        [void]$homes.Add((Split-Path -Parent (Split-Path -Parent $real)))
+    }
+    $seen = @{}
+    $result = @()
+    foreach ($h in $homes) {
+        if (-not $h -or -not (Test-Path -LiteralPath (Join-Path (Join-Path $h 'bin') $exe))) { continue }
+        $full = (Resolve-Path -LiteralPath $h).Path.TrimEnd('\', '/')
+        if ($seen.ContainsKey($full)) { continue }
+        $seen[$full] = $true
+        $major = Get-PaperDevJdkMajor $full
+        if (-not $major) { continue }
+        $result += [PSCustomObject]@{ Major = $major; Home = $full; Java = (Join-Path (Join-Path $full 'bin') $exe) }
+    }
+    return $result
+}
+
+function Get-PaperDevServerJava {
+    # The java to run a server of $Minecraft: -JavaPath when given, else an installed JDK of the preferred
+    # version, else any version the server runs on. $null when none is installed (scripts/setup.ps1 -Jdk <n>).
+    param([string]$Minecraft, [int]$JavaMinimum, [string]$JavaPath)
+    if ($JavaPath) { return (Get-PaperDevJava $JavaPath) }
+    $era = Get-PaperDevEra -Minecraft $Minecraft -JavaMinimum $JavaMinimum
+    $jdks = @(Find-PaperDevJdks)
+    $pick = $jdks | Where-Object { $_.Major -eq $era.JavaPreferred } | Select-Object -First 1
+    if (-not $pick) { $pick = $jdks | Where-Object { $_.Major -ge $era.JavaMin -and $_.Major -le $era.JavaMax } | Sort-Object Major | Select-Object -First 1 }
+    if (-not $pick) { return $null }
+    return (Get-PaperDevJava $pick.Java)
+}
+
+function Install-PaperDevJdk {
+    # Downloads Eclipse Temurin <major> (JDK) from the Adoptium API into <home>/jdk/temurin-<major>, SHA-256 checked.
+    param([int]$Major)
+    $os = 'linux'
+    if (Test-PaperDevWindows) { $os = 'windows' } elseif ((Invoke-PaperDevProcess -FilePath 'uname' -Arguments @('-s')).StdOut -match 'Darwin') { $os = 'mac' }
+    $arch = 'x64'
+    $machine = [string]$env:PROCESSOR_ARCHITECTURE
+    if (-not (Test-PaperDevWindows)) { $machine = (Invoke-PaperDevProcess -FilePath 'uname' -Arguments @('-m')).StdOut.Trim() }
+    if ($machine -match '(?i)arm64|aarch64') { $arch = 'aarch64' }
+    $assets = Get-PaperDevJson ('https://api.adoptium.net/v3/assets/latest/' + $Major + '/hotspot?architecture=' + $arch + '&image_type=jdk&os=' + $os + '&vendor=eclipse')
+    $asset = @($assets)[0]
+    if (-not $asset) { throw ('Temurin ' + $Major + ' is not available for ' + $os + '/' + $arch) }
+    $pkg = $asset.binary.package
+    $target = Join-Path (Get-PaperDevHomeDir 'jdk') ('temurin-' + $Major)
+    $archive = Join-Path (Get-PaperDevHomeDir 'cache') ([string]$pkg.name)
+    Write-Host ('downloading ' + $pkg.name + ' (' + [Math]::Round([long]$pkg.size / 1MB, 1) + ' MB) from adoptium.net')
+    Save-PaperDevDownload -Uri ([string]$pkg.link) -OutFile $archive -Sha256 ([string]$pkg.checksum)
+    $tmp = $target + '.part'
+    if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+    if ($archive.EndsWith('.zip')) { Expand-Archive -LiteralPath $archive -DestinationPath $tmp -Force }
+    else { $r = Invoke-PaperDevProcess -FilePath 'tar' -Arguments @('-xzf', $archive, '-C', $tmp); if ($r.ExitCode -ne 0) { throw ('tar failed: ' + $r.StdErr) } }
+    Remove-Item -LiteralPath $archive -Force
+    $inner = Get-ChildItem -LiteralPath $tmp -Directory | Select-Object -First 1
+    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+    Move-Item -LiteralPath $inner.FullName -Destination $target
+    Remove-Item -LiteralPath $tmp -Recurse -Force
+    if (Test-Path -LiteralPath (Join-Path $target 'Contents/Home')) { return (Join-Path $target 'Contents/Home') }
+    return $target
+}
+
 # ---------------------------------------------------------------- project
 
 function Find-PaperDevDescriptor {
@@ -526,7 +697,9 @@ function Get-PaperDevProjectVersions {
     $result = [PSCustomObject]@{ PaperApi = $null; Minecraft = $null; Java = $null; RunPaper = $null; MockBukkit = $null; Platform = 'paper' }
     foreach ($f in (Get-PaperDevBuildFiles $Project)) {
         $text = Read-PaperDevText $f
-        if (-not $result.PaperApi -and $text -match '(?:io\.papermc\.paper:paper-api:|paper-api["'']?\s*[,:]\s*version\s*=\s*["'']|<artifactId>paper-api</artifactId>\s*<version>)([0-9][^"''<\s]*)') { $result.PaperApi = $Matches[1] }
+        # paper-api (io.papermc.paper from 1.17, com.destroystokyo.paper 1.9-1.16), paperspigot-api (1.7.10, 1.8.8),
+        # and spigot-api / bukkit for Spigot projects, which also run on Paper.
+        if (-not $result.PaperApi -and $text -match '(?:(?:io\.papermc\.paper|com\.destroystokyo\.paper):paper-api:|org\.github\.paperspigot:paperspigot-api:|org\.spigotmc:spigot-api:|org\.bukkit:bukkit:|(?:paper|paperspigot|spigot)-api["'']?\s*[,:]\s*version\s*=\s*["'']|<artifactId>(?:paper|paperspigot|spigot)-api</artifactId>\s*<version>)([0-9][^"''<\s]*)') { $result.PaperApi = $Matches[1] }
         if (-not $result.PaperApi -and $text -match 'dev\.folia:folia-api:([0-9][^"''\s]*)') { $result.PaperApi = $Matches[1]; $result.Platform = 'folia' }
         if (-not $result.Java -and $text -match 'JavaLanguageVersion\.of\(\s*(\d+)\s*\)') { $result.Java = [int]$Matches[1] }
         if (-not $result.Java -and $text -match '<maven\.compiler\.release>(\d+)<') { $result.Java = [int]$Matches[1] }

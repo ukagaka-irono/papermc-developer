@@ -29,7 +29,10 @@ try {
     Push-Location $work
     Step 'new plugin.yml project' 'new-plugin.ps1' @('-Name', 'E2eBukkit', '-Description', 'end-to-end test', '-Workflow', '-Path', (Join-Path $work 'bukkit'))
     Step 'new paper-plugin.yml project' 'new-plugin.ps1' @('-Name', 'E2ePaper', '-PaperPlugin', '-Path', (Join-Path $work 'paper'))
-    foreach ($p in @('bukkit', 'paper')) {
+    # An old era: plugin.yml commands, legacy color codes, Java 8, paperspigot-api, no api-version.
+    Step 'new 1.8.8 project' 'new-plugin.ps1' @('-Name', 'E2eOld', '-Minecraft', '1.8.8', '-Path', (Join-Path $work 'old'))
+    Step '-PaperPlugin refused before 1.20.6' 'new-plugin.ps1' @('-Name', 'E2eNo', '-Minecraft', '1.16.5', '-PaperPlugin', '-Path', (Join-Path $work 'no'), '-DryRun') @(1)
+    foreach ($p in @('bukkit', 'paper', 'old')) {
         $root = Join-Path $work $p
         Step ('doctor ' + $p) 'doctor.ps1' @('-ProjectRoot', $root)
         Step ('check ' + $p) 'check.ps1' @('-ProjectRoot', $root)

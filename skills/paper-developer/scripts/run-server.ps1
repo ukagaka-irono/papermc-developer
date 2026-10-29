@@ -17,6 +17,8 @@
   -Stop       stops the test server     -Status   shows whether it runs
   -Fresh      deletes the test world before starting (the plugin's data in plugins/<name>/ is kept)
   -JdwpPort   opens a Java debugger port (attach the IDE: Remote JVM Debug, 127.0.0.1:<port>)
+  -JavaPath   the java (or JDK folder) to run the server with; by default an installed JDK the version runs on
+              (Paper 1.16.5 and earlier: Java 8-11; scripts/setup.ps1 -Jdk <n> installs one)
   Exit codes: 0 started, plugin enabled, no errors / 1 build failed or the server did not start /
               2 started but the plugin was not enabled or the log has errors / 3 no EULA agreement, java or server jar.
 .EXAMPLE
@@ -80,9 +82,20 @@ try {
     $javaNeeded = (Get-PaperDevVersionInfo -Minecraft $mc -Project $platform).JavaMinimum
 } catch { Write-PaperDevStatus 'error' ('cannot look up ' + $platform + ' ' + $mc + ': ' + $_.Exception.Message); exit 3 }
 
-$java = Get-PaperDevJava $JavaPath
+# Two javas: one that runs Gradle (17+), and the one the server of this version runs on (old servers do not
+# start on new Java: 1.16.5 and earlier need Java 8 to 11, see Get-PaperDevEra).
+$era = Get-PaperDevEra -Minecraft $mc -JavaMinimum ([int]$javaNeeded)
+$java = Get-PaperDevJava
 if (-not $java) { Write-PaperDevStatus 'missing' 'java not found (scripts/doctor.ps1)'; exit 3 }
-if ($javaNeeded -and $java.Major -lt $javaNeeded) { Write-PaperDevStatus 'missing' ($platform + ' ' + $mc + ' needs Java ' + $javaNeeded + '+, found ' + $java.Version + ' (scripts/doctor.ps1)'); exit 3 }
+$serverJava = Get-PaperDevServerJava -Minecraft $mc -JavaMinimum ([int]$javaNeeded) -JavaPath $JavaPath
+if (-not $serverJava) {
+    $range = [string]$era.JavaMin
+    if ($era.JavaMax -ge 99) { $range += '+' } elseif ($era.JavaMax -ne $era.JavaMin) { $range += '-' + $era.JavaMax }
+    Write-PaperDevStatus 'missing' ($platform + ' ' + $mc + ' runs on Java ' + $range + '; no such JDK is installed')
+    Write-Host ('          Ask the user, then: scripts/setup.ps1 -Jdk ' + $era.JavaPreferred + '  (downloads Eclipse Temurin ' + $era.JavaPreferred + ' into the home folder)')
+    exit 3
+}
+if ($serverJava.Major -lt $era.JavaMin -or $serverJava.Major -gt $era.JavaMax) { Write-PaperDevStatus 'warn' ($platform + ' ' + $mc + ' expects Java ' + $era.JavaMin + '-' + $era.JavaMax + '; starting with ' + $serverJava.Version + ' as asked') }
 
 $pluginName = Get-PaperDevPluginName $project
 $package = Get-PaperDevPluginPackage $project
@@ -135,10 +148,17 @@ $props = [ordered]@{
     'server-ip' = '127.0.0.1'; 'server-port' = $port
     'enable-rcon' = 'true'; 'rcon.port' = $rconPort; 'rcon.password' = $password; 'broadcast-rcon-to-ops' = 'false'
     'motd' = ('paper-developer test server: ' + $pluginName)
-    'level-type' = 'minecraft\:flat'; 'generate-structures' = 'false'; 'spawn-protection' = '0'
-    # A flat world needs its layers; with the default "{}" the server logs "No key layers" as an ERROR.
-    'generator-settings' = '{"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}'
+    'generate-structures' = 'false'; 'spawn-protection' = '0'
     'view-distance' = '6'; 'simulation-distance' = '6'; 'max-players' = '5'
+}
+if ($era.FlatWorld) {
+    # A flat world needs its layers; with the default "{}" the server logs "No key layers" as an ERROR.
+    $props['level-type'] = 'minecraft\:flat'
+    $props['generator-settings'] = '{"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}'
+} else {
+    # Before 1.19 the flat generator settings had other formats; use a normal world.
+    $props['level-type'] = 'default'
+    $props['generator-settings'] = ''
 }
 Set-PaperDevProperties -Path (Join-Path $serverDir 'server.properties') -Values $props
 
@@ -164,12 +184,16 @@ if (Test-Path -LiteralPath $logPath) { Remove-Item -LiteralPath $logPath -Force 
 $consolePath = Join-Path $serverDir 'console.log'
 $jvm = @(('-Xms' + $Memory), ('-Xmx' + $Memory), '-Dterminal.jline=false', '-Dterminal.ansi=false', '-Dfile.encoding=UTF-8')
 if ($JdwpPort -gt 0) { $jvm += ('-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:' + $JdwpPort) }
-$jvm += @('-jar', $server.Path, '--nogui')
+# Old CraftBukkit (1.12.2 and earlier) rejects "--nogui" and prints its usage; the plain "nogui" argument is read
+# by the vanilla server code of those versions instead.
+$noGui = '--nogui'
+if (-not (Test-PaperDevVersionAtLeast $mc '1.16')) { $noGui = 'nogui' }
+$jvm += @('-jar', $server.Path, $noGui)
 if (Test-PaperDevWindows) {
-    $cmdLine = '/d /s /c ""' + $java.Path + '" ' + (ConvertTo-PaperDevArgumentString $jvm) + ' > "' + $consolePath + '" 2>&1"'
+    $cmdLine = '/d /s /c ""' + $serverJava.Path + '" ' + (ConvertTo-PaperDevArgumentString $jvm) + ' > "' + $consolePath + '" 2>&1"'
     $proc = Start-Process -FilePath $env:ComSpec -ArgumentList $cmdLine -WorkingDirectory $serverDir -WindowStyle Hidden -PassThru
 } else {
-    $quoted = (@($java.Path) + $jvm | ForEach-Object { "'" + ($_ -replace "'", "'\''") + "'" }) -join ' '
+    $quoted = (@($serverJava.Path) + $jvm | ForEach-Object { "'" + ($_ -replace "'", "'\''") + "'" }) -join ' '
     $proc = Start-Process -FilePath 'sh' -ArgumentList @('-c', ('exec ' + $quoted + " > '" + $consolePath + "' 2>&1")) -WorkingDirectory $serverDir -PassThru
 }
 $session = [PSCustomObject]@{
@@ -178,7 +202,7 @@ $session = [PSCustomObject]@{
     startedAt = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK'); jdwpPort = $JdwpPort; project = $project.Root
 }
 Save-PaperDevSession $project $session
-Write-Host ('starting ' + $platform + ' ' + $mc + ' build ' + $server.Build.Build + ' (pid ' + $proc.Id + ', java ' + $java.Version + '); the first start takes longer')
+Write-Host ('starting ' + $platform + ' ' + $mc + ' build ' + $server.Build.Build + ' (pid ' + $proc.Id + ', java ' + $serverJava.Version + '); the first start takes longer')
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $done = $false

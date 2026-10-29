@@ -1,6 +1,6 @@
 ---
 name: paper-developer
-description: Minecraft の Paper サーバー用プラグイン（Bukkit/Spigot 互換の plugin.yml と、paper-plugin.yml。Folia 対応も）を作る・直す・動かして確かめる・配布する。新しいプラグインのひな形を作る、コマンド・イベント・設定・権限・スケジューラなどのコードを書く、ビルドやテストのエラーを直す、テスト用の Paper サーバーを立てて RCON でコマンドを送りログを見る、配布用の jar を作って GitHub Releases / Hangar / Modrinth に出す、Paper の版（paper-api、Java）を上げる、といったとき。settings.gradle.kts / build.gradle.kts（または pom.xml）と src/main/resources/plugin.yml のあるフォルダが対象。Minecraft plugin, Paper, Spigot, Bukkit, Folia, Brigadier, Adventure, MiniMessage, MockBukkit, run-paper の話題を含む。
+description: Minecraft の Paper サーバー用プラグイン（Bukkit/Spigot 互換の plugin.yml と、paper-plugin.yml。Folia 対応も。Paper 1.7.10 から最新の 26.x まで）を作る・直す・動かして確かめる・配布する。新しいプラグインのひな形を作る、コマンド・イベント・設定・権限・スケジューラなどのコードを書く、ビルドやテストのエラーを直す、テスト用の Paper サーバーを立てて RCON でコマンドを送りログを見る、配布用の jar を作って GitHub Releases / Hangar / Modrinth に出す、Paper の版（paper-api、Java）を上げる、といったとき。settings.gradle.kts / build.gradle.kts（または pom.xml）と src/main/resources/plugin.yml のあるフォルダが対象。Minecraft plugin, Paper, Spigot, Bukkit, Folia, Brigadier, Adventure, MiniMessage, MockBukkit, run-paper の話題を含む。
 allowed-tools:
   - 'Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_SKILL_DIR}/scripts/doctor.ps1*)'
   - 'Bash(powershell -NoProfile -ExecutionPolicy Bypass -File ${CLAUDE_SKILL_DIR}/scripts/versions.ps1*)'
@@ -20,7 +20,7 @@ allowed-tools:
 
 # paper-developer
 
-Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布するためのスキル。作者（ユーザー）は「何を作りたいか」に集中し、決まった作業（環境の準備、ビルドとテスト、テストサーバーでの確認、配布用 jar の作成、版の更新）はこちらで引き受ける。
+Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布するためのスキル。対象は **Paper 1.7.10 から最新（26.x）まで**。版によって使える API、Java、記述ファイルの書き方が違う（`references/versions.md`）。作者（ユーザー）は「何を作りたいか」に集中し、決まった作業（環境の準備、ビルドとテスト、テストサーバーでの確認、配布用 jar の作成、版の更新）はこちらで引き受ける。
 
 作者は、スキルの名前もコマンドも知らない。「〜して」という普通の言葉で頼まれる。何ができるかを聞かれたときや、準備を終えたときは、「〜と頼んでください」の形で例を示す。作者が Java や Gradle に慣れているとは限らない。説明は、何が起きたか・次に何をするかを先に、用語は短く添える程度にする。
 
@@ -45,7 +45,8 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 1. **プロジェクトのルートの `PLUGIN.md` を読む。** 何をするプラグインか、対象のサーバーと Java、コマンドと権限、設定、決まり、動作確認の手順など、このプラグインに固有の情報はそこにある。無い、または先頭に `<!-- paper-developer:plugin-template -->` が残っている（まだ書かれていない）ときは、`references/workflows/setup.md` に沿って、コードを読んで下書きすることを作者に提案する。
 2. **`scripts/doctor.ps1` を実行する**（何も変更しない）。プロジェクト、`plugin.yml` か `paper-plugin.yml` か、対象の Minecraft の版と必要な Java、ビルドの道具、足りないものと直し方が出る。`required` が足りなければ、ほかの作業の前に `references/workflows/setup.md` を提案する。
 3. プロジェクトがまだ無いとき（空のフォルダで「プラグインを作りたい」と言われたとき）は、`references/workflows/new-plugin.md`。
-4. **版は推測しない。** Minecraft と Paper の版、必要な Java、paper-api の書き方、Gradle プラグインの版は、時期で変わる（26.1 から版の付け方も変わった）。知識で書かず、`scripts/versions.ps1` で今の値を見る。
+4. **版は推測しない。** Minecraft と Paper の版、必要な Java、API の依存の書き方、Gradle プラグインの版は、時期で変わる（26.1 から版の付け方も変わった）。知識で書かず、`scripts/versions.ps1`（別の版は `-Minecraft <版>`）で今の値を見る。
+5. **対象の版を確かめる。** 1.20.4 以前（とくに 1.16.5 以前）のプラグインは、コマンド、メッセージ、`api-version`、Java、素材名が今とは違う。コードを書く前に `references/versions.md` を読み、その版の API で書く。
 
 ## こう頼まれたら
 
@@ -62,6 +63,7 @@ templates/     新しいプロジェクトのひな形（project/、descriptor/�
 | 「配布用の jar を作って」「リリースしたい」「Hangar（Modrinth）に出したい」 | `references/workflows/release.md` |
 | 「GitHub でビルドしたい」「Actions を入れて」「タグでリリースしたい」 | `references/workflows/ci.md` |
 | 「Paper を最新にして」「1.21 から 26 に上げて」「対応バージョンを上げて」「今の最新は？」 | `references/workflows/update-paper.md` |
+| 「1.8.8 用のプラグインを作って」「1.12.2 のサーバーで動くようにして」「古い版にも対応したい」 | `references/versions.md`（作るなら `references/workflows/new-plugin.md`） |
 | 「Folia に対応して」 | `references/paper-api.md` の「Folia」 |
 | 「スキルを更新して」「paper-developer を最新にして」 | `references/workflows/update-skill.md` |
 
@@ -86,7 +88,7 @@ Paper API、イベント、`plugin.yml` / `paper-plugin.yml` の項目、コマ�
    - プロジェクトの作り方: `/paper/dev/project-setup/index.md`、`plugin.yml`: `/paper/dev/plugin-yml/index.md`、Paper プラグイン: `/paper/dev/getting-started/paper-plugins/index.md`
    - コマンド: `/paper/dev/command-api/...`、イベント: `/paper/dev/event-listeners/index.md`、スケジューラ: `/paper/dev/scheduler/index.md`、設定: `/paper/dev/plugin-configurations/index.md`、PDC: `/paper/dev/pdc/index.md`、Folia: `/paper/dev/folia-support/index.md`、ライフサイクル: `/paper/dev/lifecycle/index.md`
    - Adventure / MiniMessage: `/adventure/minimessage/format/index.md` など
-2. **Javadoc**（https://jd.papermc.io/paper/ ）。クラスとメソッドの有無、非推奨かどうか、引数。
+2. **Javadoc**（https://jd.papermc.io/paper/ 。古い版は `https://jd.papermc.io/paper/1.16/` のように版を付ける。`references/versions.md`）。クラスとメソッドの有無、非推奨かどうか、引数。PaperMC のドキュメントは最新の版のことしか書いていないので、古い版で書くときは、その版の Javadoc とコンパイルで確かめる。
 3. **このプロジェクトの依存そのもの**。ビルドが通るかは `scripts/check.ps1` で確かめられる。メソッドがあるか迷ったら、小さく書いてコンパイルさせるのが確実。
 4. MockBukkit: https://docs.mockbukkit.org/ 。版の値は `scripts/versions.ps1`。
 5. それでも分からなければ Web 検索する。Spigot のフォーラムや古いブログの書き方は、Paper では非推奨や別の API になっていることが多いので、1. と 2. で確かめ直す。
@@ -102,6 +104,7 @@ Paper API、イベント、`plugin.yml` / `paper-plugin.yml` の項目、コマ�
 | `references/commands.md` | スクリプトの一覧、オプション、終了コード、ホームフォルダ |
 | `references/layout.md` | プロジェクトの構成。`build.gradle.kts`、`plugin.yml` と `paper-plugin.yml` の違い、何をコミットするか |
 | `references/paper-api.md` | 今の Paper でのコードの書き方の要点と、AI がやりがちな失敗 |
+| `references/versions.md` | 対応する版（1.7.10〜）と、版ごとの API の依存、Java、`api-version`、コマンドとメッセージの書き方の違い |
 | `references/testing.md` | MockBukkit のテストと、テストサーバーでの確認の使い分け |
 | `references/ai-guidelines.md` | AI を使ったプラグイン制作の約束（ライセンス、安全、配布先の規則） |
 

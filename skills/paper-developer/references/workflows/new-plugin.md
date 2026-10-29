@@ -8,7 +8,7 @@
 
 1. 作者に、次のことを聞く（会話から分かるものは聞かない。分からないものは既定で進めてよいと伝える）。
    - **何をするプラグインか**（1〜3 行）。名前（英数字。例: `SleepVote`）。
-   - 対象の Minecraft の版。既定は最新の安定版（`scripts/versions.ps1` で見て伝える）。作者のサーバーがあるなら、その版に合わせる。
+   - 対象の Minecraft の版。既定は最新の安定版（`scripts/versions.ps1` で見て伝える）。作者のサーバーがあるなら、その版に合わせる。**1.7.10 以降のどの版でも作れる**（一覧は `scripts/versions.ps1 -List`）。古い版を選んだら、`scripts/versions.ps1 -Minecraft <版>` で、その版のコマンドとメッセージの書き方、Java、テストの有無を作者に伝え、`references/versions.md` を読む。複数の版で動かしたいなら、いちばん古い版で作る。
    - Folia に対応するか（既定: しない）。`paper-plugin.yml` が要るか（既定: `plugin.yml`。違いは `references/layout.md`）。
    - GitHub で管理するか（`-Workflow` で GitHub Actions を入れる）。
    - パッケージ名（既定: Git のユーザー名から `io.github.<ユーザー>.<名前>`。独自ドメインがあれば `com.example.<名前>` のように逆順で）。
@@ -23,7 +23,7 @@
 
 ## 補足
 
-- ひな形の中身: Brigadier の `/hello` コマンド（権限 `<名前>.hello`、全員）、参加したプレイヤーへの MiniMessage のあいさつ（`config.yml` で変えられる）、それを確かめる MockBukkit のテスト 2 つ。プラグインの骨組みの見本として置いている。
+- ひな形の中身: `/hello` コマンド（権限 `<名前>.hello`、全員）、参加したプレイヤーへのあいさつ（`config.yml` で変えられる）、それを確かめる MockBukkit のテスト 2 つ（1.21 以降）。プラグインの骨組みの見本として置いている。版によって書き方が変わる: コマンドは 1.20.6 以降が Brigadier、それより前は `plugin.yml` の `commands:` と `CommandExecutor`。メッセージは 1.18.2 以降が MiniMessage、それより前は `&` の色コード（`references/versions.md`）。
 - 既存のプロジェクトに入門用ファイルだけを足すなら `scripts/init-plugin.ps1`。
 - Kotlin で書きたいと言われたら、テンプレートは Java なので、Kotlin の Gradle プラグイン（`org.jetbrains.kotlin.jvm`）を足して移すことになる。版は Gradle Plugin Portal で確かめ、作者の了承を得てから。
 

@@ -9,7 +9,8 @@
 ## 前提
 
 - **Minecraft の EULA への同意。** テストサーバーは Minecraft のサーバーを動かすので、作者が EULA（https://aka.ms/MinecraftEULA ）に同意している必要がある。`run-server.ps1` が終了コード 3 で「EULA has not been agreed to」と言ったら、EULA を示して作者に読んでもらい、**作者が同意すると答えたときだけ** `scripts/setup.ps1 -AcceptEula` を実行する。同意の代行や、同意したものとしての先回りはしない。
-- 対象の版が要求する Java（`scripts/doctor.ps1`）。
+- 対象の版のサーバーが動く Java（`scripts/doctor.ps1` の `server-java`）。**古い版のサーバーは新しい Java では起動しない**（1.16.5 以前は Java 8〜11、1.17 は 17。`references/versions.md`）。インストールされている JDK（Gradle のツールチェーン、IntelliJ が入れたものも）から、合うものを `run-server.ps1` が自動で選ぶ。無ければ終了コード 3 で、入れる JDK の版を表示する。作者に「Minecraft <版> のテストサーバーには Java <n> が要ります。Eclipse Temurin <n>（100〜200 MB）をホームフォルダに入れてよいですか？」と確かめてから `scripts/setup.ps1 -Jdk <n>`。作者が入れてある JDK を使うなら `scripts/setup.ps1 -JavaPath <JDK のフォルダ>` で登録する。
+- プロジェクトの版と違う版のサーバーで試すときは `-Minecraft <版>`（複数の版で動かすプラグインの確認。プラグインはプロジェクトの API でビルドされる）。
 
 ## 手順
 

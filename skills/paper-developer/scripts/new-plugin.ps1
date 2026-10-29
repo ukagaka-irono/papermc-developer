@@ -103,17 +103,26 @@ if ($Package -notmatch '^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)+$') { Write-PaperD
 # Versions, looked up now
 try {
     if (-not $Minecraft) { $Minecraft = Get-PaperDevLatestMinecraft }
+    if (-not (Test-PaperDevVersionAtLeast $Minecraft '1.7.10')) { Write-PaperDevStatus 'error' ('Paper versions before 1.7.10 are not supported (got ' + $Minecraft + ')'); exit 1 }
+    if ((Get-PaperDevMinecraftVersions) -notcontains $Minecraft) { Write-PaperDevStatus 'error' ('Paper has no version ' + $Minecraft + ' (scripts/versions.ps1 -List shows them)'); exit 1 }
     $info = Get-PaperDevVersionInfo -Minecraft $Minecraft
-    $javaVersion = $info.JavaMinimum
-    if (-not $javaVersion) { $javaVersion = 21 }
+    $era = Get-PaperDevEra -Minecraft $Minecraft -JavaMinimum ([int]$info.JavaMinimum)
+    $javaVersion = $era.JavaPreferred
+    $apiDependency = Get-PaperDevApiDependency $Minecraft
+    if (-not (Get-PaperDevLatestApiBuild $Minecraft)) { Write-PaperDevStatus 'warn' ($apiDependency.Coordinate + ' was not found in the Paper repository; the build may fail') }
     $runPaper = Get-PaperDevGradlePluginVersion 'xyz.jpenilla.run-paper'
     $foojay = Get-PaperDevGradlePluginVersion 'org.gradle.toolchains.foojay-resolver-convention'
     $mock = $null
     $junit = $null
+    if ($PaperPlugin -and -not $era.PaperPlugin) {
+        Write-PaperDevStatus 'error' ('-PaperPlugin needs Paper 1.20.6 or later (the template registers commands with the lifecycle API); ' + $Minecraft + ' uses plugin.yml')
+        exit 1
+    }
     if (-not $NoTests) {
-        $mock = Get-PaperDevMockBukkit -Minecraft $Minecraft
+        # The templates' tests use MockBukkit's current packages (org.mockbukkit), released for 1.21 and later.
+        if ($era.Brigadier) { $mock = Get-PaperDevMockBukkit -Minecraft $Minecraft }
         if (-not $mock) {
-            Write-PaperDevStatus 'warn' ('MockBukkit has no release for ' + $Minecraft + ' yet; the project is created without tests (add them later, references/testing.md)')
+            Write-PaperDevStatus 'note' ('no MockBukkit for ' + $Minecraft + ' that the templates use; the project is created without tests (check on the test server, references/testing.md)')
             $NoTests = $true
         } else {
             $junit = Get-PaperDevMavenRelease -Repository $PaperDevMavenCentral -Group 'org.junit' -Artifact 'junit-bom'
@@ -133,13 +142,17 @@ $tokens = @{
     PERMISSION_PREFIX = $permPrefix
     DESCRIPTION = $Description.Replace('\', '\\').Replace('"', '\"').Replace('$', '\$'); DESCRIPTION_YAML = (ConvertTo-PaperDevYamlString $Description)
     AUTHOR_YAML = $(if ($Author) { ConvertTo-PaperDevYamlString $Author } else { '' })
-    MINECRAFT = $Minecraft; API_VERSION = (Get-PaperDevApiVersionField $Minecraft); PAPER_API = (Get-PaperDevApiCoordinate $Minecraft)
+    MINECRAFT = $Minecraft; API_VERSION = [string](Get-PaperDevApiVersionField $Minecraft); API_DEPENDENCY = $apiDependency.Coordinate
     JAVA = [string]$javaVersion; RUN_PAPER = $runPaper; FOOJAY = $foojay
     MOCKBUKKIT_ARTIFACT = $(if ($mock) { $mock.Artifact } else { '' }); MOCKBUKKIT_VERSION = $(if ($mock) { $mock.Version } else { '' })
     JUNIT = [string]$junit; DESCRIPTOR = $descriptorText
 }
+# Era blocks of the templates (scripts/lib/common.ps1 Get-PaperDevEra).
 $blocks = @()
 if (-not $NoTests) { $blocks += 'TESTS' }
+if ($era.Brigadier) { $blocks += 'BRIGADIER' } else { $blocks += 'LEGACY_COMMANDS' }
+if ($era.MiniMessage) { $blocks += 'MINIMESSAGE' } else { $blocks += 'LEGACY_TEXT' }
+if ($era.ApiVersion) { $blocks += 'API_VERSION' }
 
 $templateDir = Get-PaperDevTemplateDir
 $projectTemplates = Join-Path $templateDir 'project'
@@ -157,7 +170,7 @@ foreach ($k in $starter.Keys) { [void]$plan.Add([PSCustomObject]@{ Source = (Joi
 
 Write-Host ('project:   ' + $Path)
 Write-Host ('plugin:    ' + $Name + ' (' + $Package + '.' + $mainClass + ', ' + $descriptorName + ')')
-Write-Host ('target:    Paper ' + $Minecraft + ', Java ' + $javaVersion + ', paper-api ' + $tokens.PAPER_API)
+Write-Host ('target:    Paper ' + $Minecraft + ', Java ' + $javaVersion + ', ' + $apiDependency.Coordinate + ', commands: ' + $(if ($era.Brigadier) { 'Brigadier' } else { 'plugin.yml + CommandExecutor' }) + ', text: ' + $(if ($era.MiniMessage) { 'MiniMessage' } else { 'legacy color codes' }))
 foreach ($p in $plan) {
     $state = Write-PaperDevTemplateFile -Source $p.Source -Target (Join-Path $Path $p.Target) -Tokens $tokens -Blocks $blocks -DryRun:$DryRun
     Write-PaperDevStatus $state $p.Target
@@ -178,5 +191,5 @@ if (-not $NoWrapper) {
 
 Write-Host ''
 Write-Host 'next: scripts/check.ps1 (build and test), then scripts/run-server.ps1 to try it on a test server.'
-if ($java.Major -lt $javaVersion) { Write-PaperDevStatus 'note' ('the build compiles with Java ' + $javaVersion + ' (Gradle downloads it as a toolchain); the test server also needs Java ' + $javaVersion + '+') }
+if ($java.Major -ne $javaVersion) { Write-PaperDevStatus 'note' ('the build compiles with Java ' + $javaVersion + ' (Gradle downloads it as a toolchain when missing); the test server runs on Java ' + (Format-PaperDevJavaRange $era) + ' (scripts/doctor.ps1 shows whether one is installed)') }
 exit 0

@@ -59,22 +59,25 @@ if ($versions) {
     $t = 'paper-api ' + $versions.PaperApi
     if (-not $versions.PaperApi) { $t = 'paper-api not found in the build files' }
     if ($latest -and $versions.Minecraft -and $versions.Minecraft -ne $latest) { $t += ' (latest stable Minecraft: ' + $latest + ')' }
-    Add-Item 'target' 'recommended' ([bool]$versions.PaperApi) $t 'The Minecraft version the plugin is compiled against.' 'Add compileOnly("io.papermc.paper:paper-api:<version>.build.+") (references/layout.md), or see references/workflows/update-paper.md.'
+    Add-Item 'target' 'recommended' ([bool]$versions.PaperApi) $t 'The Minecraft version the plugin is compiled against.' 'Add the API dependency for the version (scripts/versions.ps1 -Minecraft <version> prints it; references/layout.md), or see references/workflows/update-paper.md.'
 }
 
+# The java that runs Gradle (17+; the JDK the code is compiled with comes from the Gradle toolchain), and
+# the one the test server of the target version runs on (old versions do not run on new Java).
 $java = Get-PaperDevJava $JavaPath
 if ($java) {
-    $ok = $true
-    $d = $java.Version + ' at ' + $java.Path
-    if ($javaNeeded) {
-        $d += ' (Minecraft ' + $target + ' needs Java ' + $javaNeeded + '+)'
-        if ($java.Major -lt $javaNeeded) { $ok = $false }
-    }
-    Add-Item 'java' 'required' $ok $d 'Runs Gradle and the test server.' ('Install a JDK ' + $javaNeeded + ' or newer (Windows: winget install --id EclipseAdoptium.Temurin.' + $javaNeeded + '.JDK -e), or set javaPath in local.json / PAPERDEV_JAVA.')
+    Add-Item 'java' 'required' ($java.Major -ge 17) ($java.Version + ' at ' + $java.Path + ' (runs Gradle; 17+ needed)') 'Runs Gradle.' 'Install a JDK 17 or newer (Windows: winget install --id EclipseAdoptium.Temurin.25.JDK -e), or point to one with scripts/setup.ps1 -JavaPath.'
 } else {
-    $need = '21'
-    if ($javaNeeded) { $need = [string]$javaNeeded }
-    Add-Item 'java' 'required' $false 'java not found (PAPERDEV_JAVA, local.json javaPath, JAVA_HOME, PATH)' 'Runs Gradle and the test server.' ('Install a JDK ' + $need + ' or newer (Windows: winget install --id EclipseAdoptium.Temurin.' + $need + '.JDK -e). Restart the agent afterwards so PATH is reloaded.')
+    Add-Item 'java' 'required' $false 'java not found (PAPERDEV_JAVA, local.json javaPath, JAVA_HOME, PATH)' 'Runs Gradle.' 'Install a JDK 17 or newer (Windows: winget install --id EclipseAdoptium.Temurin.25.JDK -e). Restart the agent afterwards so PATH is reloaded.'
+}
+if ($target) {
+    $era = Get-PaperDevEra -Minecraft $target -JavaMinimum ([int]$javaNeeded)
+    $range = [string]$era.JavaMin
+    if ($era.JavaMax -ge 99) { $range += '+' } elseif ($era.JavaMax -ne $era.JavaMin) { $range += '-' + $era.JavaMax }
+    $serverJava = Get-PaperDevServerJava -Minecraft $target -JavaMinimum ([int]$javaNeeded)
+    $d = 'Minecraft ' + $target + ' runs on Java ' + $range
+    if ($serverJava) { $d += ': ' + $serverJava.Version + ' at ' + $serverJava.Path } else { $d += ': none installed' }
+    Add-Item 'server-java' 'recommended' ([bool]$serverJava) $d 'Runs the test server (scripts/run-server.ps1).' ('Ask the user, then scripts/setup.ps1 -Jdk ' + $era.JavaPreferred + ' (downloads Eclipse Temurin ' + $era.JavaPreferred + '), or register an installed JDK with scripts/setup.ps1 -JavaPath <folder>.')
 }
 
 if ($project) {

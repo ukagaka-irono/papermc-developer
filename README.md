@@ -1,13 +1,13 @@
 # paper-developer
 
-Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布するための**スキル**です。Bukkit/Spigot 互換の `plugin.yml` のプラグインと、`paper-plugin.yml` の Paper プラグインに対応し、Folia への対応も手伝います。
+Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布するための**スキル**です。Bukkit/Spigot 互換の `plugin.yml` のプラグインと、`paper-plugin.yml` の Paper プラグインに対応し、Folia への対応も手伝います。**Paper 1.7.10 から最新の 26.x まで**、どの版のサーバー向けにも作れます。
 
 日本語で「〜するプラグインを作って」「エラーを直して」「サーバーで動かして見せて」と頼むだけで、AI が次のことをします。
 
 | | |
 |---|---|
-| 作る | 最新の Paper に合わせたプロジェクトのひな形（Gradle、Java、Brigadier のコマンド、MiniMessage、MockBukkit のテスト）。版はその場で調べるので、古い書き方で始まらない |
-| 書く | コマンド、イベント、設定、権限、スケジューラ、PDC など。今の Paper の API と、AI がやりがちな古い書き方（`ChatColor`、`getCommand` の宣言漏れ、非同期でのワールド操作など）を踏まえて書く |
+| 作る | 対象の版に合わせたプロジェクトのひな形（Gradle、Java、コマンド、メッセージ、テスト）。最新の版なら Brigadier と MiniMessage と MockBukkit、1.8.8 などの古い版なら `plugin.yml` のコマンドと色コードと Java 8、というように、API の依存、Java、`api-version` まで版ごとに変わる。版はその場で調べる |
+| 書く | コマンド、イベント、設定、権限、スケジューラ、PDC など。対象の版の API で書く（最新の版では、AI がやりがちな古い書き方（`ChatColor`、`getCommand` の宣言漏れ、非同期でのワールド操作など）を避け、古い版では、その版に無い API を使わない） |
 | 確かめる | 記述ファイルの検査、コンパイル、テストを 1 回で行い、エラーを `ファイル:行` で示して直す。javac の表示が日本語でも読む |
 | 動かして見せる | 作者のサーバーとは別のテスト用 Paper サーバーをバックグラウンドで立て、プラグインが有効になったか、ログのエラーを報告する。RCON でコマンドを送って結果を見る。作者はクライアントで `localhost` に入って触れる |
 | 配布する | 中身を検査した配布用 jar（サーバーの API を同梱していないか、版が埋まっているか）。GitHub Actions、GitHub Releases、Hangar、Modrinth への公開の手伝い |
@@ -18,7 +18,7 @@ Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作�
 | | |
 |---|---|
 | AI と会話できる開発道具 | Claude Code、Codex、Antigravity など |
-| JDK | 対象の Minecraft が要求する版（26.x は Java 25 以上）。無ければ AI が入れ方を案内します |
+| JDK | Gradle を動かす Java 17 以上。テストサーバーには、その版のサーバーが動く Java（1.16.5 以前は 8、1.17〜1.20.4 は 17、1.20.5〜1.21 は 21、26.x は 25）。入っている JDK から自動で選び、無ければ AI が確認したうえで Eclipse Temurin を入れます |
 | PowerShell | スクリプトが PowerShell で書かれています。Windows では最初から入っているもの（5.1）で動きます。macOS / Linux では PowerShell 7（`pwsh`）を入れてください |
 | Minecraft の EULA への同意 | テストサーバーを動かすときだけ。最初に使うときに AI が確認します |
 

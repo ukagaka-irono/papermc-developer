@@ -11,6 +11,7 @@
 ## 1. MockBukkit
 
 - テンプレートは JUnit と MockBukkit（`org.mockbukkit.mockbukkit:mockbukkit-v<版>`）入りで作られる。MockBukkit は Minecraft の版ごとに別の成果物で、新しい版には遅れて出る（`scripts/versions.ps1` で有無を見る。無い版では `new-plugin.ps1` がテスト無しで作る）。
+- **1.20.4 以前を対象にしたプロジェクトは、テスト無しで作られる**（今の MockBukkit は 1.21 から。1.13〜1.20 には古い MockBukkit（`com.github.seeseemelk:MockBukkit-v1.<マイナー>`、パッケージは `be.seeseemelk.mockbukkit`）があり、1.12.2 以前には無い）。古い版では、確かめる手段はテストサーバーが中心になる。古い MockBukkit を足すかは作者と決める（版とパッケージ名を Maven Central で確かめてから）。
 - 基本の形（テンプレートの `*Test.java`）:
   - `@BeforeEach` で `server = MockBukkit.mock()` と `plugin = MockBukkit.load(Main.class)`、`@AfterEach` で `MockBukkit.unmock()`。
   - プレイヤーは `server.addPlayer()`（参加イベントも起きる）。受け取ったメッセージは `player.nextComponentMessage()`。

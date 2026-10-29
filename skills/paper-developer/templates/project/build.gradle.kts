@@ -13,9 +13,9 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:@@PAPER_API@@")
+    compileOnly("@@API_DEPENDENCY@@")
 @@BEGIN:TESTS@@
-    testImplementation("io.papermc.paper:paper-api:@@PAPER_API@@")
+    testImplementation("@@API_DEPENDENCY@@")
     testImplementation("org.mockbukkit.mockbukkit:@@MOCKBUKKIT_ARTIFACT@@:@@MOCKBUKKIT_VERSION@@")
     testImplementation(platform("org.junit:junit-bom:@@JUNIT@@"))
     testImplementation("org.junit.jupiter:junit-jupiter")

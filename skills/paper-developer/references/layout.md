@@ -24,7 +24,7 @@
 ## build.gradle.kts の要点
 
 - **paper-api は `compileOnly`。** サーバーが持っているので jar に入れない（`implementation` にすると jar にサーバーの API が入り、動かない・巨大になる。`scripts/build-release.ps1` が見つける）。
-- paper-api の版の書き方は、Minecraft の版で違う。**26.1 以降は `<版>.build.+`**（例: `26.3.build.+`。特定のビルドなら `26.3.build.229-stable`）、**1.21.11 以前は `<版>-R0.1-SNAPSHOT`**。今の値は `scripts/versions.ps1`。
+- API の依存の書き方は、Minecraft の版で違う。**26.1 以降は `io.papermc.paper:paper-api:<版>.build.+`**（例: `26.3.build.+`。特定のビルドなら `26.3.build.229-stable`）、**1.17〜1.21.11 は `io.papermc.paper:paper-api:<版>-R0.1-SNAPSHOT`**、1.9.4〜1.16.5 は `com.destroystokyo.paper:paper-api`、1.7.10 と 1.8.8 は `org.github.paperspigot:paperspigot-api`（`references/versions.md`）。今の値は `scripts/versions.ps1 -Minecraft <版>`。
 - リポジトリは `https://repo.papermc.io/repository/maven-public/`。
 - Java は `java { toolchain.languageVersion.set(JavaLanguageVersion.of(N)) }`。N は対象の Minecraft が要求する版（`versions.ps1` の `Java minimum`）。ツールチェーンの JDK が無ければ、foojay-resolver が取ってくる。
 - `processResources` の `expand` で、`plugin.yml` の `version: '${version}'` に `build.gradle.kts` の `version` を埋め込む。版は `build.gradle.kts` の 1 か所で管理する。`plugin.yml` に `$` を書くときは `$$` のように扱いに注意（Groovy のテンプレートとして展開される）。
@@ -44,7 +44,9 @@
 
 迷ったら `plugin.yml` にする（テンプレートの既定）。`bootstrapper` で起動前にしかできないこと（カスタムのエンチャントなどのレジストリ登録）が要るときに `paper-plugin.yml` を選ぶ。両方を 1 つの jar に入れると、Paper は `paper-plugin.yml` を使う。
 
-**必須の項目**: `name`（英数字と `_` `.` `-`。空白不可）、`version`、`main`（`JavaPlugin` を継承したクラスの完全名）。**`api-version` も必ず書く**（無いと古いプラグインとして扱われ、遅く、古い素材名に変換される。`paper-plugin.yml` では必須）。`api-version` は、そのプラグインが動く**いちばん古い**サーバーの版で、ビルドに使う paper-api より新しくしない。項目の一覧は https://docs.papermc.io/paper/dev/plugin-yml/index.md 。
+**必須の項目**: `name`（英数字と `_` `.` `-`。空白不可）、`version`、`main`（`JavaPlugin` を継承したクラスの完全名）。**1.13 以降を対象にするなら `api-version` も必ず書く**（無いと古いプラグインとして扱われ、遅く、古い素材名に変換される。`paper-plugin.yml` では必須）。`api-version` は、そのプラグインが動く**いちばん古い**サーバーの版で、ビルドに使う paper-api より新しくしない。1.20.5 より前のサーバーは `1.<マイナー>`（`'1.16'`）しか受け付けない。1.12.2 以前には `api-version` は無い（`references/versions.md`）。
+
+1.20.4 以前を対象にするテンプレートは、コマンドを `plugin.yml` の `commands:` に宣言し（`permission:` も付ける）、`CommandExecutor` で処理する。項目の一覧は https://docs.papermc.io/paper/dev/plugin-yml/index.md 。
 
 権限は `permissions:` に、`default: true`（全員）/ `op` / `not op` / `false` で宣言する。宣言しない権限は OP だけが持つ。
 

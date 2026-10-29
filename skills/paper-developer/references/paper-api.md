@@ -1,6 +1,8 @@
 # 今の Paper での書き方
 
-コードを書く・直す前に読む。ここは「どの API を使うか」と「何をしてはいけないか」の要点で、細かい使い方は複製しない。**書く前に、該当するドキュメントのページを読む**（`SKILL.md` の「仕様を調べる」。目次は https://docs.papermc.io/llms.txt ）。Paper は古い Bukkit の API を非推奨にして新しいものに置き換え続けているので、知識にある書き方が今も正しいとは限らない。迷ったら Javadoc（https://jd.papermc.io/paper/ ）と、`scripts/check.ps1` の非推奨の警告で確かめる。
+コードを書く・直す前に読む。ここは「どの API を使うか」と「何をしてはいけないか」の要点で、細かい使い方は複製しない。**書く前に、該当するドキュメントのページを読む**（`SKILL.md` の「仕様を調べる」。目次は https://docs.papermc.io/llms.txt ）。Paper は古い Bukkit の API を非推奨にして新しいものに置き換え続けているので、知識にある書き方が今も正しいとは限らない。
+
+**この文書は最新の版（1.20.6 以降）向け。** プロジェクトが 1.20.4 以前を対象にしているとき（`scripts/doctor.ps1` の `target`）は、ここにある API の多く（Brigadier のライフサイクル API、MiniMessage、データコンポーネント、レジストリ、Dialog など）が無い。`references/versions.md` を読み、その版の API で書く。古い版では、下の「AI がやりがちな失敗」の 1〜3 の「古い書き方」が正しい書き方になることもある。迷ったら Javadoc（https://jd.papermc.io/paper/ ）と、`scripts/check.ps1` の非推奨の警告で確かめる。
 
 ## 書き方の要点
 

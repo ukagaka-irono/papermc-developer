@@ -60,20 +60,20 @@ if (-not $project.Descriptor) {
     $name = $d.Values['name']
     if ($name -and $name -notmatch '^[A-Za-z0-9_.-]+$') { Report 'error' ('the name "' + $name + '" may use only A-Z a-z 0-9 _ . -') $file $d.Lines['name'] }
     $api = $d.Values['api-version']
+    # api-version exists from 1.13; servers before 1.20.5 accept only "1.<minor>" (anything else: "Unsupported API version").
+    $targetHasApi = (-not $versions.Minecraft) -or (Test-PaperDevVersionAtLeast $versions.Minecraft '1.13')
     if (-not $api) {
         if ($project.Kind -eq 'paper') { Report 'error' 'api-version is required in paper-plugin.yml' $file 0 }
-        else { Report 'warning' 'no api-version: the server loads the plugin in legacy mode (slow, old material names)' $file 0 }
+        elseif ($targetHasApi) { Report 'warning' 'no api-version: the server loads the plugin in legacy mode (slow, old material names)' $file 0 }
     } elseif ($versions.Minecraft) {
-        $apiParts = @($api -split '\.' | ForEach-Object { [int]($_ -replace '\D', '0') })
-        $mcParts = @($versions.Minecraft -split '\.' | ForEach-Object { [int]($_ -replace '\D', '0') })
-        $newer = $false
-        for ($i = 0; $i -lt [Math]::Max($apiParts.Count, $mcParts.Count); $i++) {
-            $a = 0; $m = 0
-            if ($i -lt $apiParts.Count) { $a = $apiParts[$i] }
-            if ($i -lt $mcParts.Count) { $m = $mcParts[$i] }
-            if ($a -ne $m) { $newer = ($a -gt $m); break }
+        if (-not $targetHasApi) {
+            Report 'notice' ('api-version is ignored by ' + $versions.Minecraft + ' (it exists from 1.13); keep it only if the plugin also targets 1.13+') $file $d.Lines['api-version']
+        } elseif ((ConvertTo-PaperDevVersion $api) -gt (ConvertTo-PaperDevVersion $versions.Minecraft)) {
+            Report 'error' ('api-version ' + $api + ' is newer than the API the build uses (' + $versions.Minecraft + ')') $file $d.Lines['api-version']
         }
-        if ($newer) { Report 'error' ('api-version ' + $api + ' is newer than the paper-api the build uses (' + $versions.Minecraft + ')') $file $d.Lines['api-version'] }
+        if ($api -match '^1\.\d+\.\d+' -and -not (Test-PaperDevVersionAtLeast $api '1.20.5')) {
+            Report 'error' ('api-version ' + $api + ': servers before 1.20.5 accept only "1.<minor>" (write ' + ($api -replace '^(1\.\d+)\..*$', '$1') + ')') $file $d.Lines['api-version']
+        }
     }
     $main = $d.Values['main']
     $sourceRoots = @('src/main/java', 'src/main/kotlin') | ForEach-Object { Join-Path $project.Module $_ }
@@ -108,7 +108,7 @@ if (-not $project.Descriptor) {
             }
         }
     }
-    if ($errors -eq 0) { Write-PaperDevStatus 'ok' ('descriptor ' + (Split-Path -Leaf $file) + ': ' + $name + ' ' + $d.Values['version'] + ', api-version ' + $api) }
+    if ($errors -eq 0) { Write-PaperDevStatus 'ok' ('descriptor ' + (Split-Path -Leaf $file) + ': ' + $name + ' ' + $d.Values['version'] + $(if ($api) { ', api-version ' + $api } else { '' }) + $(if ($versions.Minecraft) { ', builds against ' + $versions.Minecraft } else { '' })) }
 }
 
 if ($SkipBuild) {

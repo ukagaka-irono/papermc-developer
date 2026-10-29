@@ -3,7 +3,17 @@ version: '${version}'
 main: @@PACKAGE@@.@@MAIN_CLASS@@
 description: @@DESCRIPTION_YAML@@
 authors: [@@AUTHOR_YAML@@]
+@@BEGIN:API_VERSION@@
 api-version: '@@API_VERSION@@'
+@@END:API_VERSION@@
+@@BEGIN:LEGACY_COMMANDS@@
+
+commands:
+  hello:
+    description: Says hello
+    usage: /hello
+    permission: @@PERMISSION_PREFIX@@.hello
+@@END:LEGACY_COMMANDS@@
 
 permissions:
   @@PERMISSION_PREFIX@@.hello:
