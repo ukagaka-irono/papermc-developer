@@ -17,6 +17,8 @@
   The user can join with their own client at the printed address (localhost:<port>).
   -Platform   paper / folia / spigot / craftbukkit (default: what the project targets). A Paper plugin can be tried on
               Spigot to see whether it also runs there; Folia needs folia-supported: true.
+  -Database   sqlite / mysql: writes the "database:" block of plugins/<name>/config.yml (plugins made with
+              new-plugin.ps1 -Database); mysql starts the test MySQL server first (scripts/test-db.ps1)
   -Stop       stops the test server     -Status   shows whether it runs
   -Fresh      deletes the test world before starting (the plugin's data in plugins/<name>/ is kept)
   -JdwpPort   opens a Java debugger port (attach the IDE: Remote JVM Debug, 127.0.0.1:<port>)
@@ -37,6 +39,7 @@ param(
     [switch]$Fresh,
     [string]$Minecraft,
     [ValidateSet('', 'paper', 'folia', 'spigot', 'craftbukkit')][string]$Platform = '',
+    [ValidateSet('', 'sqlite', 'mysql')][string]$Database = '',
     [string]$Memory = '2G',
     [string[]]$ExtraPlugin = @(),
     [int]$JdwpPort = 0,
@@ -45,6 +48,7 @@ param(
 )
 . (Join-Path $PSScriptRoot 'lib/common.ps1')
 . (Join-Path $PSScriptRoot 'lib/server.ps1')
+. (Join-Path $PSScriptRoot 'lib/database.ps1')
 Initialize-PaperDevConsole
 
 $project = Resolve-PaperDevProject $ProjectRoot
@@ -206,6 +210,15 @@ foreach ($src in (@($jar) + $ExtraPlugin)) {
     $newDeployed += $leaf
 }
 Write-Host ('plugins: ' + ($newDeployed -join ', '))
+# -Database: points a template-made plugin (config.yml "database:") at SQLite or at the test MySQL server.
+if ($Database) {
+    $dbSession = $null
+    if ($Database -eq 'mysql') {
+        try { $dbSession = Start-PaperDevTestDb } catch { Write-PaperDevStatus 'missing' ('test database: ' + $_.Exception.Message); exit 3 }
+        Write-Host ('database: test mysql on 127.0.0.1:' + $dbSession.port + '/' + $dbSession.database + ' (scripts/test-db.ps1 -Query "...")')
+    } else { Write-Host ('database: sqlite (plugins/' + $pluginName + '/data.db)') }
+    Set-PaperDevPluginDatabaseConfig -PluginsDir $pluginsDir -PluginName $pluginName -Type $Database -Session $dbSession
+}
 
 # 5. start
 $logPath = Join-Path $serverDir 'logs/latest.log'

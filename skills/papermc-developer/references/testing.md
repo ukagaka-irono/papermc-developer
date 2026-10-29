@@ -25,6 +25,8 @@
 
 **Velocity のプラグイン**には MockBukkit にあたるものが無い。ロジックは Velocity の型に頼らないクラスに分け、普通の JUnit のテストを書く（JUnit を足すのは作者に確かめてから）。プロキシの上での動きは、テストのプロキシで確かめる（`references/velocity.md`）。
 
+**データベースを使うプラグイン**（`new-plugin.ps1 -Database`）は、`DatabaseTest` が本物の SQLite で `Database` を確かめる。テストサーバーでは `run-server.ps1 -Database sqlite|mysql`（`references/database.md`）。
+
 ## 2. テストサーバー
 
 手順は `references/workflows/try-on-server.md`。要点:

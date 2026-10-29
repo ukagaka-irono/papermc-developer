@@ -83,8 +83,10 @@ function Write-PaperDevTemplateFile {
     # Writes one rendered template unless the target exists. Returns 'created', 'exists' or 'would create'.
     param([string]$Source, [string]$Target, [hashtable]$Tokens, [string[]]$Blocks, [switch]$DryRun)
     if (Test-Path -LiteralPath $Target) { return 'exists' }
-    if ($DryRun) { return 'would create' }
     $text = Expand-PaperDevTemplate -Text (Read-PaperDevText $Source) -Tokens $Tokens -Blocks $Blocks
+    # A template that is all one block (e.g. Database.java) renders empty when the block is off: no file.
+    if ($text.Trim() -eq '') { return 'skipped' }
+    if ($DryRun) { return 'would create' }
     Write-PaperDevText -Path $Target -Text $text
     return 'created'
 }

@@ -36,7 +36,10 @@ try {
     Step 'new Velocity project' 'new-plugin.ps1' @('-Name', 'E2eProxy', '-Velocity', '-Path', (Join-Path $work 'proxy'))
     Step 'new Spigot project' 'new-plugin.ps1' @('-Name', 'E2eSpigot', '-Spigot', '-Path', (Join-Path $work 'spigot'))
     Step 'new CraftBukkit 1.12.2 project' 'new-plugin.ps1' @('-Name', 'E2eCb', '-CraftBukkit', '-Minecraft', '1.12.2', '-Path', (Join-Path $work 'cb'))
-    foreach ($p in @('bukkit', 'paper', 'old', 'folia', 'proxy', 'spigot', 'cb')) {
+    Step 'new database project' 'new-plugin.ps1' @('-Name', 'E2eDb', '-Database', '-Path', (Join-Path $work 'db'))
+    Step 'new CraftBukkit 1.12.2 database project' 'new-plugin.ps1' @('-Name', 'E2eDbOld', '-Database', '-CraftBukkit', '-Minecraft', '1.12.2', '-Path', (Join-Path $work 'dbold'))
+    Step '-Database refused for Velocity' 'new-plugin.ps1' @('-Name', 'E2eDbProxy', '-Database', '-Velocity', '-Path', (Join-Path $work 'dbproxy'), '-DryRun') @(1)
+    foreach ($p in @('bukkit', 'paper', 'old', 'folia', 'proxy', 'spigot', 'cb', 'db', 'dbold')) {
         $root = Join-Path $work $p
         Step ('doctor ' + $p) 'doctor.ps1' @('-ProjectRoot', $root)
         Step ('check ' + $p) 'check.ps1' @('-ProjectRoot', $root)
