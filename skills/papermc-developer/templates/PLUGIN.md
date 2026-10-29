@@ -1,4 +1,4 @@
-<!-- paper-developer:plugin-template -->
+<!-- papermc-developer:plugin-template -->
 <!-- ↑ この 2 行は、下書きを作者が確かめて書き終えたら消す。 -->
 # @@PLUGIN_NAME@@
 

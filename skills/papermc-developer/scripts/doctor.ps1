@@ -68,7 +68,7 @@ $java = Get-PaperDevJava $JavaPath
 if ($java) {
     Add-Item 'java' 'required' ($java.Major -ge 17) ($java.Version + ' at ' + $java.Path + ' (runs Gradle; 17+ needed)') 'Runs Gradle.' 'Install a JDK 17 or newer (Windows: winget install --id EclipseAdoptium.Temurin.25.JDK -e), or point to one with scripts/setup.ps1 -JavaPath.'
 } else {
-    Add-Item 'java' 'required' $false 'java not found (PAPERDEV_JAVA, local.json javaPath, JAVA_HOME, PATH)' 'Runs Gradle.' 'Install a JDK 17 or newer (Windows: winget install --id EclipseAdoptium.Temurin.25.JDK -e). Restart the agent afterwards so PATH is reloaded.'
+    Add-Item 'java' 'required' $false 'java not found (PAPERMCDEV_JAVA, local.json javaPath, JAVA_HOME, PATH)' 'Runs Gradle.' 'Install a JDK 17 or newer (Windows: winget install --id EclipseAdoptium.Temurin.25.JDK -e). Restart the agent afterwards so PATH is reloaded.'
 }
 if ($target) {
     $era = Get-PaperDevEra -Minecraft $target -JavaMinimum ([int]$javaNeeded)
@@ -118,7 +118,7 @@ if ($project) {
     $pm = Join-Path $project.Root 'PLUGIN.md'
     $pmOk = Test-Path -LiteralPath $pm
     $pmDetail = 'PLUGIN.md'
-    if ($pmOk -and (Read-PaperDevText $pm) -match 'paper-developer:plugin-template') { $pmOk = $false; $pmDetail = 'PLUGIN.md is still the empty template' }
+    if ($pmOk -and (Read-PaperDevText $pm) -match 'papermc-developer:plugin-template') { $pmOk = $false; $pmDetail = 'PLUGIN.md is still the empty template' }
     elseif (-not $pmOk) { $pmDetail = 'no PLUGIN.md' }
     Add-Item 'plugin-profile' 'recommended' $pmOk $pmDetail 'What this plugin is: commands, permissions, config, rules. The agent reads it first.' 'references/workflows/setup.md (draft it from the code), scripts/init-plugin.ps1 creates the empty form.'
 }

@@ -1,12 +1,12 @@
-# Shared helpers for the paper-developer scripts.
+# Shared helpers for the papermc-developer scripts.
 # Rules for every script: ASCII only (Windows PowerShell 5.1 reads BOM-less files as ANSI),
 # no PowerShell 7-only syntax, exit codes 0 OK / 1 failed / 2 needs attention / 3 cannot check (tool missing).
 
 $ErrorActionPreference = 'Stop'
 
-$PaperDevName = 'paper-developer'
-$PaperDevRepo = 'ukagaka-irono/paper-developer'
-$PaperDevUserAgent = 'paper-developer (+https://github.com/ukagaka-irono/paper-developer)'
+$PaperDevName = 'papermc-developer'
+$PaperDevRepo = 'ukagaka-irono/papermc-developer'
+$PaperDevUserAgent = 'papermc-developer (+https://github.com/ukagaka-irono/papermc-developer)'
 $PaperDevSkillDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $PaperDevFillApi = 'https://fill.papermc.io/v3/projects'
 $PaperDevMavenPaper = 'https://repo.papermc.io/repository/maven-public'
@@ -48,7 +48,7 @@ function Write-PaperDevCiAnnotation {
 # ---------------------------------------------------------------- home folder
 
 function Get-PaperDevHome {
-    $base = $env:PAPERDEV_HOME
+    $base = $env:PAPERMCDEV_HOME
     if (-not $base) {
         if ($env:LOCALAPPDATA) { $base = Join-Path $env:LOCALAPPDATA $PaperDevName }
         elseif ($env:XDG_DATA_HOME) { $base = Join-Path $env:XDG_DATA_HOME $PaperDevName }
@@ -131,7 +131,7 @@ function Invoke-PaperDevDetachedProcess {
     # caller's output pipe open through the daemon, and whoever runs this script would never see it return.
     param([string]$FilePath, [string[]]$Arguments, [string]$WorkingDirectory, [hashtable]$Environment)
     $Arguments = @($Arguments | Where-Object { $null -ne $_ -and $_ -ne '' })
-    $out = Join-Path ([System.IO.Path]::GetTempPath()) ('paper-developer-' + [guid]::NewGuid().ToString('N') + '.log')
+    $out = Join-Path ([System.IO.Path]::GetTempPath()) ('papermc-developer-' + [guid]::NewGuid().ToString('N') + '.log')
     if (-not $WorkingDirectory) { $WorkingDirectory = (Get-Location).Path }
     $saved = @{}
     if ($Environment) {
@@ -481,13 +481,13 @@ function Get-PaperDevServerJar {
 # ---------------------------------------------------------------- Java
 
 function Get-PaperDevJava {
-    # Finds java: -JavaPath, PAPERDEV_JAVA, local.json javaPath, JAVA_HOME, PATH. Returns $null when none.
+    # Finds java: -JavaPath, PAPERMCDEV_JAVA, local.json javaPath, JAVA_HOME, PATH. Returns $null when none.
     param([string]$JavaPath)
     $exe = 'java'
     if (Test-PaperDevWindows) { $exe = 'java.exe' }
     $candidates = @()
     if ($JavaPath) { $candidates += $JavaPath }
-    if ($env:PAPERDEV_JAVA) { $candidates += $env:PAPERDEV_JAVA }
+    if ($env:PAPERMCDEV_JAVA) { $candidates += $env:PAPERMCDEV_JAVA }
     $cfg = Get-PaperDevLocalConfig
     if ($cfg.PSObject.Properties['javaPath'] -and $cfg.javaPath) { $candidates += [string]$cfg.javaPath }
     if ($env:JAVA_HOME) { $candidates += (Join-Path (Join-Path $env:JAVA_HOME 'bin') $exe) }
@@ -640,11 +640,11 @@ function Test-PaperDevBuildRoot {
 }
 
 function Resolve-PaperDevProject {
-    # Finds the plugin project: -ProjectRoot, PAPERDEV_PROJECT_ROOT, then the working folder and its parents.
+    # Finds the plugin project: -ProjectRoot, PAPERMCDEV_PROJECT_ROOT, then the working folder and its parents.
     # Returns $null when no project is found (the caller decides whether that is an error).
     param([string]$ProjectRoot)
     $start = $ProjectRoot
-    if (-not $start) { $start = $env:PAPERDEV_PROJECT_ROOT }
+    if (-not $start) { $start = $env:PAPERMCDEV_PROJECT_ROOT }
     if (-not $start) { $start = (Get-Location).Path }
     if (-not (Test-Path -LiteralPath $start)) { return $null }
     $dir = (Resolve-Path -LiteralPath $start).Path
@@ -908,14 +908,14 @@ function Get-PaperDevServerDir {
 
 function Get-PaperDevSession {
     param($Project)
-    $path = Join-Path (Get-PaperDevServerDir $Project) 'paper-developer-session.json'
+    $path = Join-Path (Get-PaperDevServerDir $Project) 'papermc-developer-session.json'
     if (-not (Test-Path -LiteralPath $path)) { return $null }
     try { return (Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
 }
 
 function Save-PaperDevSession {
     param($Project, $Session)
-    $path = Join-Path (Get-PaperDevServerDir $Project) 'paper-developer-session.json'
+    $path = Join-Path (Get-PaperDevServerDir $Project) 'papermc-developer-session.json'
     Write-PaperDevText -Path $path -Text ($Session | ConvertTo-Json -Depth 5)
 }
 

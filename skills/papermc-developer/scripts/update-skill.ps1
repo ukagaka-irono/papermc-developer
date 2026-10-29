@@ -2,7 +2,7 @@
 .SYNOPSIS
   Updates a copied install of this skill (Codex, Antigravity, .claude/skills/...) to the latest commit on GitHub.
 .DESCRIPTION
-  Claude Code plugin installs are updated with "claude plugin update paper-developer" instead; this script
+  Claude Code plugin installs are updated with "claude plugin update papermc-developer" instead; this script
   refuses to touch the plugin cache. The commit that was installed is written to .installed-from in the
   skill folder. Nothing outside the skill folder changes (the home folder and the projects stay as they are).
   -DryRun         shows the installed and the latest commit
@@ -25,7 +25,7 @@ Initialize-PaperDevConsole
 if (-not $Target) { $Target = $PaperDevSkillDir }
 $Target = (Resolve-Path -LiteralPath $Target).Path
 if (($Target -replace '\\', '/') -match '/plugins/cache/') {
-    Write-PaperDevStatus 'error' 'this is a Claude Code plugin install: run "claude plugin marketplace update paper-developer" and "claude plugin update paper-developer"'
+    Write-PaperDevStatus 'error' 'this is a Claude Code plugin install: run "claude plugin marketplace update papermc-developer" and "claude plugin update papermc-developer"'
     exit 1
 }
 if (-not (Test-Path -LiteralPath (Join-Path $Target 'SKILL.md'))) { Write-PaperDevStatus 'error' ('not a skill folder: ' + $Target); exit 1 }
@@ -34,7 +34,7 @@ $installedFile = Join-Path $Target '.installed-from'
 $installed = '(unknown)'
 if (Test-Path -LiteralPath $installedFile) { $installed = (Read-PaperDevText $installedFile).Trim() }
 
-$work = Join-Path ([System.IO.Path]::GetTempPath()) ('paper-developer-update-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+$work = Join-Path ([System.IO.Path]::GetTempPath()) ('papermc-developer-update-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Path $work -Force | Out-Null
 try {
     $label = $null
@@ -59,10 +59,10 @@ try {
         Expand-Archive -LiteralPath $zip -DestinationPath $work -Force
     }
     if (-not $repoDir) {
-        $repoDir = (Get-ChildItem -LiteralPath $work -Directory | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'skills/paper-developer/SKILL.md') } | Select-Object -First 1).FullName
+        $repoDir = (Get-ChildItem -LiteralPath $work -Directory | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'skills/papermc-developer/SKILL.md') } | Select-Object -First 1).FullName
     }
-    $newSkill = Join-Path $repoDir 'skills/paper-developer'
-    if (-not (Test-Path -LiteralPath (Join-Path $newSkill 'SKILL.md'))) { Write-PaperDevStatus 'error' 'the source has no skills/paper-developer/SKILL.md'; exit 1 }
+    $newSkill = Join-Path $repoDir 'skills/papermc-developer'
+    if (-not (Test-Path -LiteralPath (Join-Path $newSkill 'SKILL.md'))) { Write-PaperDevStatus 'error' 'the source has no skills/papermc-developer/SKILL.md'; exit 1 }
     if ($DryRun) { Write-PaperDevStatus 'plan' ('would replace ' + $Target + ' with ' + $label); exit 0 }
 
     foreach ($item in (Get-ChildItem -LiteralPath $Target -Force)) { Remove-Item -LiteralPath $item.FullName -Recurse -Force }

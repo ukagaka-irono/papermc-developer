@@ -1,11 +1,11 @@
 {
-  "name": "paper-developer",
+  "name": "papermc-developer",
   "description": "Minecraft の Paper サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布する。ひな形の作成、Paper API での書き方、ビルドとテスト（MockBukkit）、テスト用 Paper サーバーでの確認（RCON とログ）、配布用 jar の作成と公開、Paper の版の更新のためのスキルと、仕様調査のサブエージェントが入っている。",
   "author": {
     "name": "ukagaka-irono"
   },
-  "homepage": "https://github.com/ukagaka-irono/paper-developer",
-  "repository": "https://github.com/ukagaka-irono/paper-developer",
+  "homepage": "https://github.com/ukagaka-irono/papermc-developer",
+  "repository": "https://github.com/ukagaka-irono/papermc-developer",
   "license": "Unlicense",
   "keywords": ["minecraft", "paper", "papermc", "bukkit", "spigot", "folia", "plugin"]
 }

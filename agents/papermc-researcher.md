@@ -1,5 +1,5 @@
 ---
-name: paper-researcher
+name: papermc-researcher
 description: Minecraft の Paper / Bukkit / Folia のプラグイン開発の仕様を調べる係。Paper API のクラスやメソッドの有無と使い方、イベント、plugin.yml / paper-plugin.yml の項目、Brigadier のコマンドと引数型、Adventure / MiniMessage の書式、スケジューラと Folia、PDC、レジストリ、MockBukkit の使い方、Gradle プラグイン（run-paper、shadow、paperweight、hangar-publish、minotaur）の設定を確認したいときは、推測で書く前にこのエージェントに任せる。調査と報告だけを行い、ファイルは編集しない。
 tools: Read, Grep, Glob, WebSearch, WebFetch
 model: haiku
@@ -17,7 +17,7 @@ model: haiku
 4. Gradle プラグインは、それぞれの README（run-paper: https://github.com/jpenilla/run-task 、shadow: https://github.com/GradleUp/shadow 、paperweight-userdev: PaperMC のドキュメント `/paper/dev/userdev/index.md`、Hangar: https://github.com/HangarMC/hangar-publish-plugin 、Modrinth: https://github.com/modrinth/minotaur ）。版は Gradle Plugin Portal（https://plugins.gradle.org/ ）。
 5. Paper 本体のソース https://github.com/PaperMC/Paper （ドキュメントに無い挙動）。
 6. それでも足りなければ WebSearch を使う。Spigot の古いフォーラムやブログの書き方は、Paper では非推奨や別の API になっていることが多いので、1. か 2. で確かめ直す。
-7. そのプロジェクトのコードを Grep で確認してもよい。実際に動くかは、paper-developer の `scripts/check.ps1`（コンパイルとテスト）や `scripts/run-server.ps1` で確かめられることを報告に添える（実行は依頼元がする）。
+7. そのプロジェクトのコードを Grep で確認してもよい。実際に動くかは、papermc-developer の `scripts/check.ps1`（コンパイルとテスト）や `scripts/run-server.ps1` で確かめられることを報告に添える（実行は依頼元がする）。
 
 ## 注意
 

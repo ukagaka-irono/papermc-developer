@@ -1,10 +1,10 @@
-# スキル（paper-developer）の更新
+# スキル（papermc-developer）の更新
 
 スキルは、プラグインのプロジェクトとは別に更新する。プロジェクトのフォルダは変わらない（`PLUGIN.md` も、コードも）。更新で変わるのは、スクリプトと資料とテンプレートだけ。
 
 ## 使うとき
 
-作者が「スキルを更新して」「paper-developer を最新にして」「新しいバージョンはある？」と言ったとき。
+作者が「スキルを更新して」「papermc-developer を最新にして」「新しいバージョンはある？」と言ったとき。
 
 **作者にはっきり頼まれたときだけ行う。** スキルの更新は、このスキル自身を置き換える。
 
@@ -12,8 +12,8 @@
 
 | 入れ方 | 更新 |
 |---|---|
-| Claude Code のプラグイン | `claude plugin marketplace update paper-developer` のあと `claude plugin update paper-developer`（`--scope` は入れたときと同じ）。更新したら Claude Code を再起動するか `/reload-plugins`。マーケットプレイスの自動更新を有効にしていれば、起動後に更新される |
-| フォルダのコピー（`.agents/skills/paper-developer/` など） | `scripts/update-skill.ps1`。GitHub の最新を取って、そのフォルダを置き換える |
+| Claude Code のプラグイン | `claude plugin marketplace update papermc-developer` のあと `claude plugin update papermc-developer`（`--scope` は入れたときと同じ）。更新したら Claude Code を再起動するか `/reload-plugins`。マーケットプレイスの自動更新を有効にしていれば、起動後に更新される |
+| フォルダのコピー（`.agents/skills/papermc-developer/` など） | `scripts/update-skill.ps1`。GitHub の最新を取って、そのフォルダを置き換える |
 
 どちらで入れたか分からなければ、スキルのフォルダのパスで判断する。`.claude/plugins/cache/` の下ならプラグイン、`.agents/skills/` や `.claude/skills/` の下ならコピー。
 
@@ -26,4 +26,4 @@
 ## 更新の後で確かめる
 
 - `scripts/doctor.ps1` が通る。
-- 変更内容は https://github.com/ukagaka-irono/paper-developer のコミット履歴で見られる。
+- 変更内容は https://github.com/ukagaka-irono/papermc-developer のコミット履歴で見られる。

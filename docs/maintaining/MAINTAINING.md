@@ -1,6 +1,6 @@
 # このスキル自身を直す・育てる人へ
 
-`paper-developer`（スキルの本体、スクリプト、資料、テンプレート）を直すときの注意です。プラグインを作るときの指示は `skills/paper-developer/SKILL.md` と `references/`、利用者向けの案内は `README.md` にあります。このフォルダ（`docs/maintaining/`）はリポジトリにだけあり、スキルの一部としては配られません。
+`papermc-developer`（スキルの本体、スクリプト、資料、テンプレート）を直すときの注意です。プラグインを作るときの指示は `skills/papermc-developer/SKILL.md` と `references/`、利用者向けの案内は `README.md` にあります。このフォルダ（`docs/maintaining/`）はリポジトリにだけあり、スキルの一部としては配られません。
 
 ## 方針
 
@@ -13,8 +13,8 @@
 
 ```
 .claude-plugin/plugin.json, marketplace.json   version を書かない
-agents/paper-researcher.md                      仕様調査（haiku）
-skills/paper-developer/                         ← コピー導入では、このフォルダだけが配られる。自己完結させる
+agents/papermc-researcher.md                      仕様調査（haiku）
+skills/papermc-developer/                         ← コピー導入では、このフォルダだけが配られる。自己完結させる
   SKILL.md                                      入口。500 行以下。allowed-tools に読み取り・検査だけのスクリプト
   scripts/                                      スクリプト。lib/common.ps1（共通）、lib/templates.ps1、lib/server.ps1
   references/                                   引く資料。workflows/ と共通の資料
@@ -24,8 +24,8 @@ tests/check-repo.ps1                            リポジトリの検査（CI �
 tests/e2e.ps1                                   ひな形を作ってビルドとテストを通す（ネットワークと JDK が要る）
 ```
 
-- **`skills/paper-developer/` の外のファイルを、スクリプトや資料から参照しない。** コピー導入では外が無い。
-- **スキルのフォルダには書き込まない。** 書き込む先はホームフォルダ（`Get-PaperDevHome`。`PAPERDEV_HOME`）。
+- **`skills/papermc-developer/` の外のファイルを、スクリプトや資料から参照しない。** コピー導入では外が無い。
+- **スキルのフォルダには書き込まない。** 書き込む先はホームフォルダ（`Get-PaperDevHome`。`PAPERMCDEV_HOME`）。
 
 ## `scripts/*.ps1` の書き方
 
@@ -62,7 +62,7 @@ tests/e2e.ps1                                   ひな形を作ってビルド�
 
 ## ブランチ
 
-このリポジトリも、スキルがプラグインのプロジェクトに求めるのと同じ `main` / `develop` / `〇〇〇〇-fix` で運用する（プロジェクト向けの手順は `skills/paper-developer/references/workflows/branches.md`）。
+このリポジトリも、スキルがプラグインのプロジェクトに求めるのと同じ `main` / `develop` / `〇〇〇〇-fix` で運用する（プロジェクト向けの手順は `skills/papermc-developer/references/workflows/branches.md`）。
 
 | ブランチ | 役割 |
 |---|---|
@@ -74,12 +74,12 @@ tests/e2e.ps1                                   ひな形を作ってビルド�
 - `develop` を `main` に入れる（リリース）前に、下の「確認」を `develop` で行う。テストサーバーに関わる変更は、EULA に同意した手元の環境で `run-server.ps1` まで通す（CI では動かせない）。`develop` → `main` も Pull Request で行い、マージした時点で利用者に届く。
 - リリース前の `develop` を試すには、コピー導入なら `scripts/update-skill.ps1 -Ref develop`。
 - `main` の不具合を急いで直すときも、`develop` から `〇〇〇〇-fix` を作り、`develop` を経て `main` に入れる（`main` だけを直さない。直したものが `develop` から消えるのを防ぐ）。
-- リポジトリの場所（`ukagaka-irono/paper-developer`）は、`scripts/lib/common.ps1` の `$PaperDevRepo`、`README.md`、`templates/AGENTS.md`、`SKILL.md`、`references/workflows/update-skill.md`、`.claude-plugin/` にある。移したら全部直す（`tests/check-repo.ps1` が食い違いを見つける）。
+- リポジトリの場所（`ukagaka-irono/papermc-developer`）は、`scripts/lib/common.ps1` の `$PaperDevRepo`、`README.md`、`templates/AGENTS.md`、`SKILL.md`、`references/workflows/update-skill.md`、`.claude-plugin/` にある。移したら全部直す（`tests/check-repo.ps1` が食い違いを見つける）。
 
 ## 確認
 
 スキルを変えたら、次を確かめる。
 
 1. `powershell -NoProfile -ExecutionPolicy Bypass -File tests/check-repo.ps1`（と `pwsh` でも）: 構文、ASCII、`SKILL.md` と文書が指すパスの実在、`allowed-tools` のパス、テンプレートのトークン、リポジトリ名のそろい。
-2. `tests/e2e.ps1`: 一時フォルダに `new-plugin.ps1` でプロジェクトを作り（`plugin.yml` と `paper-plugin.yml` の両方）、`check.ps1`、`build-release.ps1`、`update-paper.ps1 -DryRun` を通す。`PAPERDEV_HOME` を一時フォルダにして、利用者のホームフォルダを汚さない。
+2. `tests/e2e.ps1`: 一時フォルダに `new-plugin.ps1` でプロジェクトを作り（`plugin.yml` と `paper-plugin.yml` の両方）、`check.ps1`、`build-release.ps1`、`update-paper.ps1 -DryRun` を通す。`PAPERMCDEV_HOME` を一時フォルダにして、利用者のホームフォルダを汚さない。
 3. テストサーバーを変えたとき: EULA に同意した自分の環境で、`run-server.ps1`、`rcon.ps1 "plugins"`、`server-log.ps1`、`run-server.ps1 -Stop` を通す（CI では EULA に同意できないので走らせない）。
