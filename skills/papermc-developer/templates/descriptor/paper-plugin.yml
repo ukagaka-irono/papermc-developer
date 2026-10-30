@@ -1,0 +1,22 @@
+name: @@PLUGIN_NAME@@
+version: '${version}'
+main: @@PACKAGE@@.@@MAIN_CLASS@@
+description: @@DESCRIPTION_YAML@@
+authors: [@@AUTHOR_YAML@@]
+api-version: '@@API_VERSION@@'
+@@BEGIN:FOLIA@@
+# Loaded by Folia too (folia-supported). Use only the region-aware schedulers: references/paper-api.md
+folia-supported: true
+@@END:FOLIA@@
+
+permissions:
+  @@PERMISSION_PREFIX@@.hello:
+    description: Allows /hello
+    default: true
+
+# Plugins this plugin needs. See https://docs.papermc.io/paper/dev/getting-started/paper-plugins/
+# dependencies:
+#   server:
+#     SomePlugin:
+#       load: BEFORE
+#       required: true

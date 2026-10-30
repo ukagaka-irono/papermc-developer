@@ -1,0 +1,29 @@
+# スキル（papermc-developer）の更新
+
+スキルは、プラグインのプロジェクトとは別に更新する。プロジェクトのフォルダは変わらない（`PLUGIN.md` も、コードも）。更新で変わるのは、スクリプトと資料とテンプレートだけ。
+
+## 使うとき
+
+作者が「スキルを更新して」「papermc-developer を最新にして」「新しいバージョンはある？」と言ったとき。
+
+**作者にはっきり頼まれたときだけ行う。** スキルの更新は、このスキル自身を置き換える。
+
+## 入れ方で更新の方法が違う
+
+| 入れ方 | 更新 |
+|---|---|
+| Claude Code のプラグイン | `claude plugin marketplace update papermc-developer` のあと `claude plugin update papermc-developer`（`--scope` は入れたときと同じ）。更新したら Claude Code を再起動するか `/reload-plugins`。マーケットプレイスの自動更新を有効にしていれば、起動後に更新される |
+| フォルダのコピー（`.agents/skills/papermc-developer/` など） | `scripts/update-skill.ps1`。GitHub の最新を取って、そのフォルダを置き換える |
+
+どちらで入れたか分からなければ、スキルのフォルダのパスで判断する。`.claude/plugins/cache/` の下ならプラグイン、`.agents/skills/` や `.claude/skills/` の下ならコピー。
+
+## コピーで入れたスキルの更新
+
+1. 確認だけを行う（GitHub に問い合わせることを一言伝える）: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-skill.ps1 -DryRun`。`installed` と `latest` を見て、新しい版があるかを伝える。
+2. 了承を得てから、`-DryRun` を外して実行する。特定の版は `-Ref <タグ・ブランチ・コミット>`。
+3. 終わったら、エージェントを再起動して `SKILL.md` を読み直させる。
+
+## 更新の後で確かめる
+
+- `scripts/doctor.ps1` が通る。
+- 変更内容は https://github.com/ukagaka-irono/papermc-developer のコミット履歴で見られる。

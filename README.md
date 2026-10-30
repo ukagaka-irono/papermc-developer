@@ -1,15 +1,15 @@
-# paper-developer
+# papermc-developer
 
-Minecraft の **Paper** サーバー用プラグインを、AI と一緒に作る・直す・動かして確かめる・配布するための**スキル**です。Bukkit/Spigot 互換の `plugin.yml` のプラグインと、`paper-plugin.yml` の Paper プラグインに対応し、Folia への対応も手伝います。**Paper 1.7.10 から最新の 26.x まで**、どの版のサーバー向けにも作れます。
+Minecraft の **PaperMC**（[Paper](https://papermc.io/software/paper)、[Folia](https://papermc.io/software/folia)、[Velocity](https://papermc.io/software/velocity)）のプラグインを、AI と一緒に作る・直す・動かして確かめる・配布するための**スキル**です。Bukkit/Spigot 互換の `plugin.yml` のプラグインと、`paper-plugin.yml` の Paper プラグインに対応し、Folia への対応も手伝います。**Paper 1.7.10 から最新の 26.x まで**、どの版のサーバー向けにも作れます。Folia（リージョンごとに並列で動く Paper）で動くプラグイン、Velocity（プロキシ）のプラグイン、Spigot / CraftBukkit でも動く Bukkit API だけのプラグインも作れます。
 
 日本語で「〜するプラグインを作って」「エラーを直して」「サーバーで動かして見せて」と頼むだけで、AI が次のことをします。
 
 | | |
 |---|---|
 | 作る | 対象の版に合わせたプロジェクトのひな形（Gradle、Java、コマンド、メッセージ、テスト）。最新の版なら Brigadier と MiniMessage と MockBukkit、1.8.8 などの古い版なら `plugin.yml` のコマンドと色コードと Java 8、というように、API の依存、Java、`api-version` まで版ごとに変わる。版はその場で調べる |
-| 書く | コマンド、イベント、設定、権限、スケジューラ、PDC など。対象の版の API で書く（最新の版では、AI がやりがちな古い書き方（`ChatColor`、`getCommand` の宣言漏れ、非同期でのワールド操作など）を避け、古い版では、その版に無い API を使わない） |
+| 書く | コマンド、イベント、設定、権限、スケジューラ、PDC、データベース（SQLite / MySQL）など。対象の版の API で書く（最新の版では、AI がやりがちな古い書き方（`ChatColor`、`getCommand` の宣言漏れ、非同期でのワールド操作など）を避け、古い版では、その版に無い API を使わない） |
 | 確かめる | 記述ファイルの検査、コンパイル、テストを 1 回で行い、エラーを `ファイル:行` で示して直す。javac の表示が日本語でも読む |
-| 動かして見せる | 作者のサーバーとは別のテスト用 Paper サーバーをバックグラウンドで立て、プラグインが有効になったか、ログのエラーを報告する。RCON でコマンドを送って結果を見る。作者はクライアントで `localhost` に入って触れる |
+| 動かして見せる | 作者のサーバーとは別のテスト用 Paper / Folia / Spigot / CraftBukkit サーバー（Spigot と CraftBukkit は、作者の了承を得て BuildTools で作る）、または Velocity プロキシとその後ろの Paper サーバーをバックグラウンドで立て、プラグインが有効になったか、ログのエラーを報告する。RCON でコマンドを送って結果を見る。作者はクライアントで `localhost` に入って触れる |
 | 配布する | 中身を検査した配布用 jar（サーバーの API を同梱していないか、版が埋まっているか）。GitHub Actions、GitHub Releases、Hangar、Modrinth への公開の手伝い |
 | 更新する | Paper / Minecraft の版を上げる（paper-api、Java、MockBukkit、ワークフローをまとめて直し、ビルドを確かめる） |
 
@@ -31,29 +31,29 @@ Gradle や Paper のサーバーは、スクリプトが必要なときに取っ
 プラグインのプロジェクトのフォルダ（これから作るなら、空のフォルダ）で Claude Code を開いて、
 
 ```
-claude plugin marketplace add ukagaka-irono/paper-developer
-claude plugin install paper-developer --scope project
+claude plugin marketplace add ukagaka-irono/papermc-developer
+claude plugin install papermc-developer --scope project
 ```
 
-入れたら、**Claude Code をいったん終了して、開き直します**（入れた直後のセッションには読み込まれません）。`claude plugin list` に `paper-developer` が出れば成功です。
+入れたら、**Claude Code をいったん終了して、開き直します**（入れた直後のセッションには読み込まれません）。`claude plugin list` に `papermc-developer` が出れば成功です。
 
 | | |
 |---|---|
 | `--scope project` | いま開いているプロジェクトだけ（`.claude/settings.json` に記録され、リポジトリで共有される） |
 | `--scope user` | どのプロジェクトでも |
-| `claude plugin uninstall paper-developer --scope project` | 消す。入れたときと同じ `--scope` を渡す |
+| `claude plugin uninstall papermc-developer --scope project` | 消す。入れたときと同じ `--scope` を渡す |
 
-プラグインには、スキルのほか、仕様調査用のサブエージェント（`paper-researcher`）が入っています。
+プラグインには、スキルのほか、仕様調査用のサブエージェント（`papermc-researcher`）が入っています。
 
 ### Codex / Antigravity など、フォルダのコピーで入れる場合
 
-このページの **Code** → **Download ZIP** で落として展開し、中の `skills/paper-developer/` を、プロジェクトのフォルダの `.agents/skills/` に置きます。
+このページの **Code** → **Download ZIP** で落として展開し、中の `skills/papermc-developer/` を、プロジェクトのフォルダの `.agents/skills/` に置きます。
 
 ```
 プロジェクト\
   .agents\
     skills\
-      paper-developer\
+      papermc-developer\
         SKILL.md
         scripts\
         references\
@@ -71,6 +71,10 @@ claude plugin install paper-developer --scope project
 ```
 セットアップして
 夜をスキップする投票のプラグインを作りたい
+Folia でも動くようにして
+Velocity のプラグインを作って
+Spigot でも動くように作って
+プレイヤーのデータを MySQL に保存できるようにして
 /home コマンドを足して
 チェックして
 サーバーで動かして見せて
@@ -91,7 +95,7 @@ Paper を最新にして
 | `.gitignore`、`.gitattributes`、`.editorconfig` | リポジトリの設定（無いときだけ） |
 | `.github/workflows/check.yml`、`release.yml` | GitHub で push ごとのビルド、タグでのリリース（任意） |
 
-ダウンロードした Gradle とサーバーの jar、テストサーバー、設定（`local.json`）は、ホームフォルダ（`%LOCALAPPDATA%\paper-developer`。環境変数 `PAPERDEV_HOME` で変えられます）に置かれます。
+ダウンロードした Gradle とサーバーの jar、テストサーバー、設定（`local.json`）は、ホームフォルダ（`%LOCALAPPDATA%\papermc-developer`。環境変数 `PAPERMCDEV_HOME` で変えられます）に置かれます。
 
 ## テストサーバーについて
 
@@ -107,9 +111,9 @@ Claude Code は、スクリプトを実行するたびに許可を確認しま�
 {
   "permissions": {
     "allow": [
-      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File *paper-developer*scripts/doctor.ps1*)",
-      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File *paper-developer*scripts/check.ps1*)",
-      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File *paper-developer*scripts/server-log.ps1*)"
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File *papermc-developer*scripts/doctor.ps1*)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File *papermc-developer*scripts/check.ps1*)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File *papermc-developer*scripts/server-log.ps1*)"
     ]
   }
 }
@@ -121,7 +125,7 @@ Claude Code は、スクリプトを実行するたびに許可を確認しま�
 
 | 入れ方 | 更新 |
 |---|---|
-| Claude Code のプラグイン | `claude plugin marketplace update paper-developer` のあと `claude plugin update paper-developer`。更新したら Claude Code を再起動 |
+| Claude Code のプラグイン | `claude plugin marketplace update papermc-developer` のあと `claude plugin update papermc-developer`。更新したら Claude Code を再起動 |
 | フォルダのコピー | AI に「スキルを更新して」と頼む（`scripts/update-skill.ps1`）。または ZIP を落とし直して置き換える |
 
 このスキルには**バージョン番号がありません**。更新は GitHub の最新のコミットを追います。Paper、Java、Gradle、MockBukkit などの版はスキルに書かれておらず、スクリプトがそのときの最新を調べます。
@@ -131,7 +135,7 @@ Claude Code は、スクリプトを実行するたびに許可を確認しま�
 ```
 .claude-plugin/        プラグインとマーケットプレイスの定義
 agents/                仕様調査用のサブエージェント
-skills/paper-developer/
+skills/papermc-developer/
   SKILL.md             最初に読まれるもの
   scripts/             実行するもの（共通の部品は lib/）
   references/          引く資料（workflows/ と共通の資料）

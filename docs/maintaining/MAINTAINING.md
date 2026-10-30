@@ -1,6 +1,6 @@
 # このスキル自身を直す・育てる人へ
 
-`paper-developer`（スキルの本体、スクリプト、資料、テンプレート）を直すときの注意です。プラグインを作るときの指示は `skills/paper-developer/SKILL.md` と `references/`、利用者向けの案内は `README.md` にあります。このフォルダ（`docs/maintaining/`）はリポジトリにだけあり、スキルの一部としては配られません。
+`papermc-developer`（スキルの本体、スクリプト、資料、テンプレート）を直すときの注意です。プラグインを作るときの指示は `skills/papermc-developer/SKILL.md` と `references/`、利用者向けの案内は `README.md` にあります。このフォルダ（`docs/maintaining/`）はリポジトリにだけあり、スキルの一部としては配られません。
 
 ## 方針
 
@@ -13,8 +13,8 @@
 
 ```
 .claude-plugin/plugin.json, marketplace.json   version を書かない
-agents/paper-researcher.md                      仕様調査（haiku）
-skills/paper-developer/                         ← コピー導入では、このフォルダだけが配られる。自己完結させる
+agents/papermc-researcher.md                      仕様調査（haiku）
+skills/papermc-developer/                         ← コピー導入では、このフォルダだけが配られる。自己完結させる
   SKILL.md                                      入口。500 行以下。allowed-tools に読み取り・検査だけのスクリプト
   scripts/                                      スクリプト。lib/common.ps1（共通）、lib/templates.ps1、lib/server.ps1
   references/                                   引く資料。workflows/ と共通の資料
@@ -24,8 +24,8 @@ tests/check-repo.ps1                            リポジトリの検査（CI �
 tests/e2e.ps1                                   ひな形を作ってビルドとテストを通す（ネットワークと JDK が要る）
 ```
 
-- **`skills/paper-developer/` の外のファイルを、スクリプトや資料から参照しない。** コピー導入では外が無い。
-- **スキルのフォルダには書き込まない。** 書き込む先はホームフォルダ（`Get-PaperDevHome`。`PAPERDEV_HOME`）。
+- **`skills/papermc-developer/` の外のファイルを、スクリプトや資料から参照しない。** コピー導入では外が無い。
+- **スキルのフォルダには書き込まない。** 書き込む先はホームフォルダ（`Get-PaperDevHome`。`PAPERMCDEV_HOME`）。
 
 ## `scripts/*.ps1` の書き方
 
@@ -52,19 +52,38 @@ tests/e2e.ps1                                   ひな形を作ってビルド�
 | Gradle | `services.gradle.org/versions/current` と、配布物の `.sha256`。Wrapper は、ホームフォルダに取った Gradle で `gradle wrapper` を実行して作る |
 | javac の出力 | JDK の表示言語で level の語が変わる（`error` / `エラー`）。Gradle は失敗時に同じメッセージを字下げして繰り返す。`Get-PaperDevCompilerMessages` は語を緩く読み、重複を除く |
 | テストサーバー | Windows は `cmd /d /s /c ""java" ... > console.log 2>&1"` を `Start-Process -WindowStyle Hidden` で（PID は cmd のもの。止めるときは `taskkill /T`）。その他は `sh -c 'exec java ...'`。起動の判定は `logs/latest.log` の `]: Done (`。停止は RCON の `stop`。RCON は Source RCON の形式で、分割された返事の終わりを知るため、未知の種類のパケットを続けて送り、その返事を区切りにする |
+| Folia | `folia-supported: true`（`new-plugin.ps1 -Folia`、テンプレートの `FOLIA` ブロック）と paper-api のまま。テストは `run-server.ps1 -Platform folia` が Fill API の `folia` から jar を取る（チャンネルが ALPHA のことがある）。Folia でも RCON は動く。`check.ps1` の Folia の検査は `getServer()` / `Bukkit` / `server` の `.getScheduler()` だけを見る（`entity.getScheduler()` は Folia の正しい API）。PowerShell の名前は大文字小文字を区別しないので、`-Platform` の引数とスクリプトの `$platform` は同じ変数（実際に踏んだ） |
+| Velocity | プロジェクトは `velocity-api` を含むビルドファイルで見分ける（`Kind = velocity`、記述ファイル無し）。`@Plugin` は `Get-PaperDevVelocityPlugin` が正規表現で読む。テンプレート（`templates/velocity/`）は `BuildConstants` を Gradle のタスクで作り、`@Plugin(version = BuildConstants.VERSION)` にする。テストのプロキシ（`run-proxy.ps1`）は、`velocity.toml` を jar の `default-velocity.toml` から作って書き換え（1 回の起動で済む）、バックエンドの `config/paper-global.yml` は無ければ `proxies.velocity` だけを書く（Paper が残りを補う）。Velocity には RCON が無いので、`lib/console-bridge.ps1`（隠れた PowerShell）が java の標準入力をつなぎ、キューのファイルに足された行を送る。ログの形式は `[時刻] [スレッド/LEVEL] [ロガー]: ` で、プラグインのロガー名はプラグインの id |
+| Spigot / CraftBukkit | プロジェクトの platform は依存で決める（`spigot-api` なら spigot、`bukkit` か `build.gradle.kts` の `papermc-developer: platform=craftbukkit` なら craftbukkit）。版の一覧は `https://hub.spigotmc.org/versions/` の `<版>.json`、Java の範囲はその `javaVersions`（クラスファイルの版。無ければ 7〜8 で、このスキルは 8）。サーバーの jar は BuildTools（`--nogui --rev <版> --compile spigot|craftbukkit --output-dir <dir>`、出力は `spigot-<版>.jar` / `craftbukkit-<版>.jar`。BuildTools のソースの `utils/Flags.java` と `builder/Builder.java` で確かめた）。BuildTools は外部のコードを取って動かすので、`setup.ps1 -BuildServer` という明示の手順だけが動かし、`run-server.ps1` は jar が無ければ止まって作り方を示す。テンプレートは Paper と共通で、`BUKKIT`、`SERVER_SPIGOT` / `SERVER_CRAFTBUKKIT`、`SPIGOT_REPO`、`CRAFTBUKKIT` のブロックで分ける（run-paper は Paper しか起動しないので入れない）。実際に動かして分かったこと: Windows では BuildTools が `sh -c exit` で Git を探し、無いと PortableGit を取って展開しようとして失敗することがある（Git for Windows の `bin` と `usr\bin` を PATH に足す）。Spigot のソースは深く、Windows の 260 文字の制限に当たる（`GIT_CONFIG_COUNT` などの環境変数で `core.longpaths=true`、作業フォルダは `<home>/bt`）。種類の違うサーバーで同じワールドを使うと起動できない（Folia が作ったワールドを Spigot が読めない）ので、サーバーのフォルダは種類ごと（`Get-PaperDevPlatformDir`） |
+| データベース | ドライバーはサーバーに同梱されている（Paper / Spigot 26.3 の jar の `META-INF/libraries.list` と bundler で確かめた）ので、テンプレートは `java.sql` だけを使い、ドライバーを jar に入れない（テストだけ `sqlite-jdbc` を `testRuntimeOnly`）。HikariCP は入れない（版によって `libraries:` が使えず、shadow が要るため）。SQL は UPDATE してから INSERT（古い SQLite に upsert が無い）。RCON は、コマンドが戻った後に送った返事を受け取らないので、`/hello` は回数をログにも出す（`rcon.ps1` はログを見せる）。テスト用の MySQL は、作者の入れた `mysqld` を `--no-defaults --initialize-insecure` で別のデータフォルダに初期化し、`--port` / `--bind-address=127.0.0.1` / `--mysqlx=OFF` で動かす（作者の my.ini とサービスを使わない）。テンプレートのファイルが丸ごと 1 つのブロック（`Database.java`）なら、ブロックが無効のときファイルを作らない（`Write-PaperDevTemplateFile`） |
 | `latest.log` | 行頭が `[HH:MM:SS] [スレッド/LEVEL]: ` の行が 1 件の始まり。それ以外の行（スタックトレース）は直前の件に付ける。プラグインの出力は `[プラグイン名] ` で始まる |
 
 ## 更新（プラグイン）
 
 - `plugin.json` と `marketplace.json` に **`version` を書かない**。書かなければ、コミットのたびに新しい版になり、`claude plugin update` と自動更新で届く。
-- したがって、**既定ブランチの先頭は、いつでも利用者に届く**。壊れたまま push しない。
+- したがって、**既定ブランチ（`main`）の先頭は、いつでも利用者に届く**。壊れたまま push しない。だから、下の「ブランチ」のとおり、`main` には `develop` からしか入れない。
 - `claude plugin validate .` で、マニフェストと同梱物を確かめる。
-- リポジトリの場所（`ukagaka-irono/paper-developer`）は、`scripts/lib/common.ps1` の `$PaperDevRepo`、`README.md`、`templates/AGENTS.md`、`SKILL.md`、`references/workflows/update-skill.md`、`.claude-plugin/` にある。移したら全部直す（`tests/check-repo.ps1` が食い違いを見つける）。
+
+## ブランチ
+
+このリポジトリも、スキルがプラグインのプロジェクトに求めるのと同じ `main` / `develop` / `〇〇〇〇-fix` で運用する（プロジェクト向けの手順は `skills/papermc-developer/references/workflows/branches.md`）。
+
+| ブランチ | 役割 |
+|---|---|
+| `main` | 利用者に届く版。**GitHub の既定ブランチは `main` のままにする**（プラグインのマーケットプレイスとコピー導入の `update-skill.ps1` は既定ブランチを取る）。直接コミットしない |
+| `develop` | 次に `main` へ入れる変更を集める。直接コミットしない |
+| `〇〇〇〇-fix` | 1 つの変更ごと（例: `branch-rules-fix`、`folia-server-fix`）。`develop` から作り、`develop` への Pull Request で戻す |
+
+- 作業ブランチの Pull Request は `develop` 向け。CI（`.github/workflows/check.yml`。`check-repo` と `e2e`）が通ってからマージする。
+- `develop` を `main` に入れる（リリース）前に、下の「確認」を `develop` で行う。テストサーバーに関わる変更は、EULA に同意した手元の環境で `run-server.ps1` まで通す（CI では動かせない）。`develop` → `main` も Pull Request で行い、マージした時点で利用者に届く。
+- リリース前の `develop` を試すには、コピー導入なら `scripts/update-skill.ps1 -Ref develop`。
+- `main` の不具合を急いで直すときも、`develop` から `〇〇〇〇-fix` を作り、`develop` を経て `main` に入れる（`main` だけを直さない。直したものが `develop` から消えるのを防ぐ）。
+- リポジトリの場所（`ukagaka-irono/papermc-developer`）は、`scripts/lib/common.ps1` の `$PaperDevRepo`、`README.md`、`templates/AGENTS.md`、`SKILL.md`、`references/workflows/update-skill.md`、`.claude-plugin/` にある。移したら全部直す（`tests/check-repo.ps1` が食い違いを見つける）。
 
 ## 確認
 
 スキルを変えたら、次を確かめる。
 
 1. `powershell -NoProfile -ExecutionPolicy Bypass -File tests/check-repo.ps1`（と `pwsh` でも）: 構文、ASCII、`SKILL.md` と文書が指すパスの実在、`allowed-tools` のパス、テンプレートのトークン、リポジトリ名のそろい。
-2. `tests/e2e.ps1`: 一時フォルダに `new-plugin.ps1` でプロジェクトを作り（`plugin.yml` と `paper-plugin.yml` の両方）、`check.ps1`、`build-release.ps1`、`update-paper.ps1 -DryRun` を通す。`PAPERDEV_HOME` を一時フォルダにして、利用者のホームフォルダを汚さない。
+2. `tests/e2e.ps1`: 一時フォルダに `new-plugin.ps1` でプロジェクトを作り（`plugin.yml` と `paper-plugin.yml` の両方）、`check.ps1`、`build-release.ps1`、`update-paper.ps1 -DryRun` を通す。`PAPERMCDEV_HOME` を一時フォルダにして、利用者のホームフォルダを汚さない。
 3. テストサーバーを変えたとき: EULA に同意した自分の環境で、`run-server.ps1`、`rcon.ps1 "plugins"`、`server-log.ps1`、`run-server.ps1 -Stop` を通す（CI では EULA に同意できないので走らせない）。

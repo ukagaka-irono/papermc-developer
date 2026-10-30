@@ -1,0 +1,26 @@
+# @@PLUGIN_NAME@@ settings.
+@@BEGIN:MINIMESSAGE@@
+# Messages use MiniMessage: https://docs.papermc.io/adventure/minimessage/format/
+join-message: "<green>Welcome, <player>!"
+hello-message: "<green>Hello!"
+@@END:MINIMESSAGE@@
+@@BEGIN:LEGACY_TEXT@@
+# Messages use "&" color codes (&a green, &c red, &l bold ...). {player} is the player's name.
+join-message: "&aWelcome, {player}!"
+hello-message: "&aHello!"
+@@END:LEGACY_TEXT@@
+@@BEGIN:DATABASE@@
+
+database:
+  # sqlite: a file in this plugin's folder (nothing to set up). mysql: a MySQL / MariaDB server.
+  type: sqlite
+  sqlite-file: data.db
+  mysql:
+    host: 127.0.0.1
+    port: 3306
+    database: minecraft
+    user: minecraft
+    password: ''
+    # JDBC connection properties, e.g. useSSL=true&serverTimezone=UTC
+    properties: ''
+@@END:DATABASE@@
